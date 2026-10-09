@@ -24,3 +24,4 @@ Thumbs.db
 # Large weights (keep model task assets, ignore raw checkpoint if too large for git)
 *.pth
 *.pt
+!models/FINAL_EfficientNet_B0_FakeAVCeleb.pth
