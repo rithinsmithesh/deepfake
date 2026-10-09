@@ -1,0 +1,4 @@
+Actual Class,Number_of_Videos,Mean_Correlation,Mean_Sync_Score,Median_Correlation,Median_Sync_Score
+Fake,100,0.0158,7.16,-0.0019,0.0
+Fake Voice Only,30,0.0425,9.51,0.0667,6.67
+Real,100,0.0562,9.37,0.0648,6.48

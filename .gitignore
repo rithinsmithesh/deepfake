@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Matplotlib & caches
+.matplotlib/
+.cache/
+
+# Streamlit
+.streamlit/*
+!.streamlit/config.toml
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Large weights (keep model task assets, ignore raw checkpoint if too large for git)
+*.pth
+*.pt
