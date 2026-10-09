@@ -1,10 +1,12 @@
-"""
-Automated GitHub Push Helper for DeepShield
-Pushes local repository commits to GitHub without requiring system Xcode tools.
-"""
-
+import os
 import sys
 import getpass
+import certifi
+
+# Configure SSL certificate bundle for macOS Python
+os.environ["SSL_CERT_FILE"] = certifi.where()
+os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
+
 from dulwich import porcelain
 from dulwich.repo import Repo
 
