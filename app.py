@@ -1036,7 +1036,7 @@ elif selected_page == "🎬 Multimodal Forensic Lab":
                         </div>
                         <div style="margin-top: 10px; font-size: 0.78rem; font-family: monospace; color: #94a3b8; display: flex; justify-content: space-between;">
                             <span>MODEL: EfficientNet-B0</span>
-                            <span>BACKEND: PyTorch ({vis_detector_dev := str(visual_detector.device).upper()})</span>
+                            <span>BACKEND: PyTorch ({str(visual_detector.device).upper()})</span>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
