@@ -1,6 +1,8 @@
 """
 DeepShield: Multimodal Deepfake Forensic Engine
 Streamlit Web Application — High-Tech Cyber UI Edition
+Integrates Spatial Convolutional Networks (EfficientNet-B0), Physical Acoustics (MFCC),
+Biometric Audio–Lip Synchronization (MediaPipe), and Live Camera & Call Operations.
 """
 
 import os
@@ -12,6 +14,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+from PIL import Image
 
 # Safe matplotlib cache directory
 os.environ["MPLCONFIGDIR"] = "/tmp/matplotlib"
@@ -21,6 +24,8 @@ from src.audio_analyzer import DeepShieldAudioAnalyzer
 from src.sync_analyzer import DeepShieldSyncAnalyzer
 from src.trust_engine import DeepShieldTrustEngine
 from src.dataset_analytics import DeepShieldDatasetAnalytics
+from src.live_camera_processor import LiveCameraProcessor
+from src.live_recorder import render_live_webcam_recorder
 
 
 # ---------------------------------------------------------
@@ -170,6 +175,11 @@ st.markdown("""
         color: #c084fc;
         border: 1px solid rgba(147, 51, 234, 0.35);
     }
+    .badge-rose {
+        background: rgba(239, 68, 68, 0.15);
+        color: #f87171;
+        border: 1px solid rgba(239, 68, 68, 0.35);
+    }
 
     /* Glassmorphism Cards */
     .glass-card {
@@ -290,12 +300,248 @@ def get_trust_engine():
 def get_dataset_analytics():
     return DeepShieldDatasetAnalytics()
 
+@st.cache_resource
+def get_live_camera_processor():
+    task_model = "models/face_landmarker.task"
+    return LiveCameraProcessor(task_model_path=task_model)
+
 
 visual_detector = get_visual_detector()
 audio_analyzer = get_audio_analyzer()
 sync_analyzer = get_sync_analyzer()
 trust_engine = get_trust_engine()
 dataset_analytics = get_dataset_analytics()
+live_camera_processor = get_live_camera_processor()
+
+
+# ---------------------------------------------------------
+# Reusable Forensic Tab Rendering Function
+# ---------------------------------------------------------
+def render_multimodal_forensic_results(trust_res, vis_res, audio_res, sync_res, frames, timestamps, exec_latency):
+    """Renders the comprehensive 4-tab forensic report with radial gauge and diagnostic curves."""
+    st.markdown(f"""
+    <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px 18px; margin: 16px 0;">
+        <span style="color: #34d399; font-weight: 600;">✓ Multimodal Forensic Pipeline Executed Successfully</span>
+        <span style="font-family: monospace; font-size: 0.85rem; color: #94a3b8;">INFERENCE LATENCY: {exec_latency}s</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    tab_verdict, tab_visual, tab_audio, tab_sync = st.tabs([
+        "🛡️ MULTIMODAL VERDICT",
+        "👁️ SPATIAL CNN FRAMES",
+        "🔊 ACOUSTIC SPECTRA",
+        "👄 LIP SYNCHRONIZATION"
+    ])
+
+    # TAB 1: TRUST VERDICT
+    with tab_verdict:
+        score = trust_res["trust_score"]
+        verdict = trust_res["authenticity_label"]
+        v_color = trust_res.get("verdict_color", "emerald")
+
+        if v_color == "emerald":
+            gauge_color = "#10b981"
+            badge_style = "badge-green"
+        elif v_color == "amber":
+            gauge_color = "#f59e0b"
+            badge_style = "badge-amber"
+        else:
+            gauge_color = "#ef4444"
+            badge_style = "badge-rose"
+
+        col_gauge, col_hud = st.columns([1, 1.3])
+
+        with col_gauge:
+            fig_gauge = go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=score if score is not None else 0,
+                domain={'x': [0, 1], 'y': [0, 1]},
+                number={'suffix': "/100", 'font': {'size': 38, 'color': '#f8fafc', 'family': 'Plus Jakarta Sans'}},
+                gauge={
+                    'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "#475569"},
+                    'bar': {'color': gauge_color, 'thickness': 0.28},
+                    'bgcolor': "rgba(15, 23, 42, 0.4)",
+                    'borderwidth': 0,
+                    'steps': [
+                        {'range': [0, 45], 'color': 'rgba(239, 68, 68, 0.15)'},
+                        {'range': [45, 65], 'color': 'rgba(245, 158, 11, 0.15)'},
+                        {'range': [65, 100], 'color': 'rgba(16, 185, 129, 0.15)'}
+                    ],
+                    'threshold': {
+                        'line': {'color': "#ffffff", 'width': 3},
+                        'thickness': 0.75,
+                        'value': score if score is not None else 0
+                    }
+                }
+            ))
+            fig_gauge.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                height=280,
+                margin=dict(l=20, r=20, t=30, b=10)
+            )
+            st.plotly_chart(fig_gauge, use_container_width=True)
+
+            st.markdown(f"""
+            <div style="text-align: center;">
+                <span class="badge {badge_style}" style="font-size: 0.9rem; padding: 6px 16px;">VERDICT: {verdict}</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with col_hud:
+            st.markdown("""
+            <div class="hud-metric-title">FORENSIC SIGNAL CONTRIBUTIONS</div>
+            """, unsafe_allow_html=True)
+
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.markdown("""
+                <div class="glass-card" style="padding: 14px;">
+                    <div class="hud-metric-title">SPATIAL CNN</div>
+                """, unsafe_allow_html=True)
+                if vis_res.get("status") == "success":
+                    v_pts = round(vis_res['mean_real_prob'] * 0.75, 1)
+                    st.markdown(f"""
+                    <div class="hud-metric-value" style="font-size: 1.4rem; color: #38bdf8;">{vis_res['mean_real_prob']}%</div>
+                    <div class="hud-metric-sub">+{v_pts} pts (75% wt)</div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown("<div style='color: #fbbf24; font-size: 0.85rem;'>Awaiting .pth</div>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            with c2:
+                st.markdown("""
+                <div class="glass-card" style="padding: 14px;">
+                    <div class="hud-metric-title">AUDIO CADENCE</div>
+                """, unsafe_allow_html=True)
+                if audio_res.get("has_audio"):
+                    st.markdown(f"""
+                    <div class="hud-metric-value" style="font-size: 1.4rem; color: #c084fc;">{audio_res['speech_ratio']}%</div>
+                    <div class="hud-metric-sub">RMS: {audio_res['mean_rms']:.3f}</div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown("<div style='color: #ef4444; font-size: 0.85rem;'>No Audio Track</div>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            with c3:
+                st.markdown("""
+                <div class="glass-card" style="padding: 14px;">
+                    <div class="hud-metric-title">LIP SYNC</div>
+                """, unsafe_allow_html=True)
+                if sync_res.get("success"):
+                    s_norm = min(100.0, (sync_res['sync_score'] / 25.0) * 100.0)
+                    s_pts = round(0.25 * s_norm, 1)
+                    st.markdown(f"""
+                    <div class="hud-metric-value" style="font-size: 1.4rem; color: #34d399;">{sync_res['sync_score']:.1f}</div>
+                    <div class="hud-metric-sub">+{s_pts} pts (25% wt)</div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown("<div style='color: #ef4444; font-size: 0.85rem;'>0 pts (Nullified)</div>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            st.markdown(f"""
+            <div class="glass-card" style="margin-top: 12px; padding: 14px; border-left: 3px solid {gauge_color};">
+                <div style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.5;">{trust_res['reasoning']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # TAB 2: VISUAL CNN ANALYSIS
+    with tab_visual:
+        st.markdown("### 👁️ EfficientNet-B0 Frame Decomposition")
+        st.markdown(f"<div style='font-size: 0.8rem; font-family: monospace; color: #94a3b8; margin-bottom: 10px;'>UNIFORMLY EXTRACTED INSPECTION FRAMES ({len(frames)} SAMPLES):</div>", unsafe_allow_html=True)
+
+        cols = st.columns(min(8, max(1, len(frames))))
+        for idx, (f_idx, img) in enumerate(frames[:8]):
+            with cols[idx]:
+                t_sec = timestamps[idx] if idx < len(timestamps) else 0.0
+                st.markdown(f"<div class='filmstrip-card'><span style='font-size: 0.7rem; font-family: monospace; color: #38bdf8;'>F#{f_idx} ({t_sec:.1f}s)</span></div>", unsafe_allow_html=True)
+                st.image(img, use_container_width=True)
+
+        if len(frames) > 8:
+            cols2 = st.columns(min(8, len(frames) - 8))
+            for idx, (f_idx, img) in enumerate(frames[8:16]):
+                with cols2[idx]:
+                    actual_idx = idx + 8
+                    t_sec = timestamps[actual_idx] if actual_idx < len(timestamps) else 0.0
+                    st.markdown(f"<div class='filmstrip-card'><span style='font-size: 0.7rem; font-family: monospace; color: #38bdf8;'>F#{f_idx} ({t_sec:.1f}s)</span></div>", unsafe_allow_html=True)
+                    st.image(img, use_container_width=True)
+
+        st.divider()
+        if vis_res.get("status") == "success":
+            st.markdown("#### 🧠 Frame-by-Frame Softmax Probability Activation")
+            df_frames = pd.DataFrame(vis_res["frame_results"])
+            fig_bars = px.bar(
+                df_frames,
+                x="frame_index",
+                y=["prob_real", "prob_fake"],
+                barmode="group",
+                labels={"value": "Softmax Probability", "frame_index": "Video Frame Number"},
+                color_discrete_map={"prob_real": "#10b981", "prob_fake": "#ef4444"}
+            )
+            fig_bars.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(15, 23, 42, 0.4)",
+                height=280,
+                margin=dict(l=30, r=20, t=20, b=30)
+            )
+            st.plotly_chart(fig_bars, use_container_width=True)
+
+    # TAB 3: AUDIO ACOUSTICS
+    with tab_audio:
+        st.markdown("### 🔊 Physical Acoustic Signal Decomposition")
+        if audio_res.get("has_audio"):
+            st.markdown("<div class='hud-metric-title'>NORMALIZED AMPLITUDE WAVEFORM (16kHz DOWNSAMPLED)</div>", unsafe_allow_html=True)
+            df_wave = pd.DataFrame({"Time (s)": audio_res["waveform_times"], "Amplitude": audio_res["waveform"]})
+            fig_w = px.line(df_wave, x="Time (s)", y="Amplitude", color_discrete_sequence=["#38bdf8"])
+            fig_w.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(15, 23, 42, 0.4)", height=220, margin=dict(l=30, r=20, t=10, b=30))
+            st.plotly_chart(fig_w, use_container_width=True)
+
+            st.markdown("<div class='hud-metric-title'>13-BAND MEL-FREQUENCY CEPSTRAL COEFFICIENTS (MFCC HEATMAP)</div>", unsafe_allow_html=True)
+            fig_m = px.imshow(audio_res["mfcc"], aspect="auto", color_continuous_scale="Viridis", labels=dict(x="Time Frame (512 hop)", y="MFCC Index", color="dB"))
+            fig_m.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(15, 23, 42, 0.4)", height=240, margin=dict(l=30, r=20, t=10, b=30))
+            st.plotly_chart(fig_m, use_container_width=True)
+        else:
+            st.warning("⚠️ No active audio container detected.")
+
+    # TAB 4: AUDIO-LIP SYNCHRONIZATION
+    with tab_sync:
+        st.markdown("### 👄 Temporal Audio–Lip Synchronization")
+        if sync_res.get("success"):
+            st.markdown("<div class='hud-metric-title'>TEMPORAL COHERENCE: SPEECH VOCAL ENERGY vs. LIP APERTURE</div>", unsafe_allow_html=True)
+            df_sync = pd.DataFrame({
+                "Time (s)": sync_res["audio_times"],
+                "Speech Energy (RMS > Mean)": sync_res["speech_activity"],
+                "Normalized Lip Aperture": sync_res["mouth_norm"]
+            })
+            fig_s = px.line(
+                df_sync,
+                x="Time (s)",
+                y=["Speech Energy (RMS > Mean)", "Normalized Lip Aperture"],
+                color_discrete_map={"Speech Energy (RMS > Mean)": "#38bdf8", "Normalized Lip Aperture": "#ec4899"}
+            )
+            fig_s.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(15, 23, 42, 0.4)",
+                height=300,
+                margin=dict(l=30, r=20, t=20, b=30)
+            )
+            st.plotly_chart(fig_s, use_container_width=True)
+
+            st.markdown(f"""
+            <div class="glass-card" style="border-left: 3px solid #10b981; margin-top: 14px;">
+                <span class="badge badge-green">TOP-TIER HUMAN SYNCHRONIZATION</span>
+                <div style="font-size: 1.1rem; font-weight: 700; color: #f8fafc; margin-top: 6px;">Sync Score: {sync_res['sync_score']:.2f} / 100 (Pearson r = {sync_res['correlation']:.4f})</div>
+                <p style="color: #cbd5e1; font-size: 0.88rem; margin-top: 4px;">
+                    In the 230-video FakeAVCeleb experiment, authentic human speech averages only <strong>9.37</strong> (median 6.48). 
+                    Scores above 15.0 represent high synchronization due to non-linear bilabial consonants ('M', 'B', 'P') where human lips close during vocalization.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.warning(f"⚠️ Synchronization Inactive: {sync_res.get('reason', 'Missing stream')}")
 
 
 # ---------------------------------------------------------
@@ -313,10 +559,22 @@ with st.sidebar:
         "NAVIGATION",
         [
             "🏠 Dashboard & Mission",
+            "📹 Live Camera & Call Lab",
             "🎬 Multimodal Forensic Lab"
         ],
         label_visibility="collapsed"
     )
+
+    st.markdown("<br><hr style='border-color: rgba(255,255,255,0.08);'><br>", unsafe_allow_html=True)
+    st.markdown("<div class='hud-metric-title'>ENGINE TELEMETRY</div>", unsafe_allow_html=True)
+    st.markdown(f"""
+    <div style="font-size: 0.82rem; color: #94a3b8; line-height: 1.6; font-family: 'JetBrains Mono', monospace;">
+        <div>DEVICE: <span style="color: #38bdf8;">{visual_detector.device}</span></div>
+        <div>MODEL: <span style="color: #34d399;">{'ONLINE' if visual_detector.is_loaded else 'PENDING'}</span></div>
+        <div>LIP MESH: <span style="color: #34d399;">478 PTS</span></div>
+        <div>AUDIO SR: <span style="color: #c084fc;">16,000 Hz</span></div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------
@@ -330,21 +588,359 @@ if selected_page == "🏠 Dashboard & Mission":
         </h1>
         <p style="color: #94a3b8; font-size: 1.05rem; margin-top: 12px; max-width: 800px; line-height: 1.6;">
             Next-generation deepfake verification engine integrating spatial convolutional networks, 
-            acoustic energy profiling, and biometric audio–lip synchronization.
+            acoustic energy profiling, and biometric audio–lip synchronization for live calls and recorded media.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("### ⚡ Quick Launch Checklist")
-    st.markdown("""
-    1. Select **🎬 Multimodal Forensic Lab** in the left navigation.
-    2. Choose **"Your Video (Library Test)"** or upload an MP4/MOV file.
-    3. Click **"Execute Forensic Analysis"** to inspect frame predictions, audio acoustics, and temporal sync curves!
-    """)
+    st.markdown("### ⚡ Operational Workflows")
+    col_w1, col_w2 = st.columns(2)
+
+    with col_w1:
+        st.markdown("""
+        <div class="glass-card">
+            <div style="font-size: 1.2rem; font-weight: 700; color: #38bdf8; margin-bottom: 8px;">
+                📹 Live Camera & Call Operation (New)
+            </div>
+            <p style="color: #94a3b8; font-size: 0.9rem; line-height: 1.5;">
+                Test real-time video call feeds directly via your webcam & microphone:
+            </p>
+            <ul style="color: #cbd5e1; font-size: 0.88rem; line-height: 1.6; padding-left: 20px;">
+                <li><strong>Live Video Call Recorder:</strong> Capture 5–12s live speech clips for full multimodal analysis.</li>
+                <li><strong>Instant Facial Biometric Scanner:</strong> Snap a webcam frame to isolate 478 MediaPipe facial landmarks and evaluate spatial deepfake probability.</li>
+                <li><strong>Live Voice Call Analyzer:</strong> Inspect live microphone acoustic signatures and MFCC spectrum.</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col_w2:
+        st.markdown("""
+        <div class="glass-card">
+            <div style="font-size: 1.2rem; font-weight: 700; color: #34d399; margin-bottom: 8px;">
+                🎬 Multimodal File Forensic Lab
+            </div>
+            <p style="color: #94a3b8; font-size: 0.9rem; line-height: 1.5;">
+                Execute in-depth forensic investigation on pre-recorded media:
+            </p>
+            <ul style="color: #cbd5e1; font-size: 0.88rem; line-height: 1.6; padding-left: 20px;">
+                <li><strong>High-Speed CNN Frame Extraction:</strong> Uniform 16-frame EfficientNet-B0 inference.</li>
+                <li><strong>Physical Acoustic Profiling:</strong> 16kHz speech waveform & 13-band MFCC heatmap.</li>
+                <li><strong>Biometric Lip Synchronization:</strong> Pearson correlation between mouth aperture & audio RMS.</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------
-# PAGE 2: MULTIMODAL FORENSIC LAB
+# PAGE 2: LIVE CAMERA & CALL LAB (NEW FEATURE)
+# ---------------------------------------------------------
+elif selected_page == "📹 Live Camera & Call Lab":
+    st.markdown("""
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px;">
+        <div>
+            <h2 style="margin: 0; font-size: 2rem; color: #f8fafc;">📹 Live Camera & Video Call Lab</h2>
+            <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 0.95rem;">
+                Real-time webcam inspection and live call deepfake recognition engine.
+            </p>
+        </div>
+        <div>
+            <span class="badge badge-green"><span class="pulse-dot"></span> LIVE CAMERA SUITE ACTIVE</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    cam_tab1, cam_tab2, cam_tab3, cam_tab4 = st.tabs([
+        "🎥 LIVE VIDEO CALL RECORDER (MULTIMODAL)",
+        "📸 INSTANT WEBCAM FACIAL SCANNER",
+        "🎙️ LIVE VOICE CALL ANALYZER",
+        "🔴 HARDWARE CAMERA PROBE"
+    ])
+
+    # -----------------------------------------------------
+    # TAB 1: LIVE VIDEO CALL RECORDER (VIDEO + AUDIO)
+    # -----------------------------------------------------
+    with cam_tab1:
+        st.markdown("""
+        <div style="margin-bottom: 12px; font-size: 0.92rem; color: #cbd5e1;">
+            Record a live video and voice sample directly from your webcam & microphone (simulating a video call).
+            The captured stream will be evaluated through our spatial CNN, acoustic spectrogram, and biometric lip-sync engine.
+        </div>
+        """, unsafe_allow_html=True)
+
+        rec_result = render_live_webcam_recorder(key="live_call_recorder_main")
+
+        if rec_result and rec_result.get("video_path") and os.path.exists(rec_result["video_path"]):
+            live_vid = rec_result["video_path"]
+            duration = rec_result.get("duration", 0.0)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            col_v1, col_v2 = st.columns([1.1, 1])
+
+            with col_v1:
+                st.markdown(f"<div style='font-size: 0.85rem; font-family: monospace; color: #38bdf8; margin-bottom: 6px;'>CAPTURED CALL STREAM ({duration:.1f}s)</div>", unsafe_allow_html=True)
+                st.video(live_vid)
+
+            with col_v2:
+                st.markdown("<div style='font-size: 0.85rem; font-family: monospace; color: #38bdf8; margin-bottom: 6px;'>LIVE TELEMETRY</div>", unsafe_allow_html=True)
+                meta = visual_detector.extract_video_metadata(live_vid)
+                if meta:
+                    st.markdown(f"""
+                    <div class="glass-card" style="padding: 16px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                            <div>
+                                <div class="hud-metric-title">RESOLUTION</div>
+                                <div style="font-size: 1.3rem; font-weight: 700; color: #f8fafc;">{meta['width']} × {meta['height']} px</div>
+                            </div>
+                            <div>
+                                <div class="hud-metric-title">CAPTURE FPS</div>
+                                <div style="font-size: 1.3rem; font-weight: 700; color: #38bdf8;">{meta['fps']} FPS</div>
+                            </div>
+                            <div>
+                                <div class="hud-metric-title">TOTAL FRAMES</div>
+                                <div style="font-size: 1.3rem; font-weight: 700; color: #f8fafc;">{meta['frame_count']} frames</div>
+                            </div>
+                            <div>
+                                <div class="hud-metric-title">RECORDED DURATION</div>
+                                <div style="font-size: 1.3rem; font-weight: 700; color: #34d399;">{meta['duration']}s</div>
+                            </div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🚀 EXECUTE MULTIMODAL FORENSIC ANALYSIS ON LIVE CALL", key="btn_run_live_call", use_container_width=True):
+                with st.spinner("Decomposing live call stream: sampling frames, extracting acoustics, tracking 478 face landmarks..."):
+                    t_start = time.time()
+                    frames, timestamps = visual_detector.sample_frames(live_vid, num_samples=16)
+                    audio_res = audio_analyzer.analyze_audio(live_vid)
+                    sync_res = sync_analyzer.analyze_synchronization(audio_res, live_vid)
+                    vis_res = visual_detector.predict_frames(frames)
+                    trust_res = trust_engine.evaluate(vis_res, audio_res, sync_res)
+                    exec_latency = round(time.time() - t_start, 3)
+
+                render_multimodal_forensic_results(trust_res, vis_res, audio_res, sync_res, frames, timestamps, exec_latency)
+
+    # -----------------------------------------------------
+    # TAB 2: INSTANT WEBCAM FACIAL SCANNER (SPATIAL CNN)
+    # -----------------------------------------------------
+    with cam_tab2:
+        st.markdown("""
+        <div style="margin-bottom: 12px; font-size: 0.92rem; color: #cbd5e1;">
+            Point your webcam at your face and capture an instant live snapshot.
+            MediaPipe tracks <strong>478 biometric landmarks</strong> and isolates the facial ROI for high-speed spatial deepfake detection via <strong>EfficientNet-B0</strong>.
+        </div>
+        """, unsafe_allow_html=True)
+
+        snap = st.camera_input("Point camera at face and capture snapshot", key="live_snap_camera")
+
+        if snap is not None:
+            with st.spinner("Locking biometric target & evaluating spatial convolutional features..."):
+                t_snap_start = time.time()
+                proc_res = live_camera_processor.process_camera_snapshot(snap, visual_detector)
+                snap_latency = round(time.time() - t_snap_start, 3)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            col_img, col_pred = st.columns([1.1, 1])
+
+            with col_img:
+                st.markdown("<div style='font-size: 0.85rem; font-family: monospace; color: #38bdf8; margin-bottom: 6px;'>BIOMETRIC TARGET ACQUISITION</div>", unsafe_allow_html=True)
+                st.image(proc_res["annotated_image"], use_container_width=True)
+
+                if proc_res["face_detected"]:
+                    st.markdown(f"""
+                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                        <span class="badge badge-green">✓ FACE ACQUIRED</span>
+                        <span class="badge badge-cyan">{proc_res['landmarks_count']} LANDMARKS</span>
+                        <span class="badge badge-purple">{proc_res['face_crop'].size[0]}×{proc_res['face_crop'].size[1]} ROI</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown("<span class='badge badge-amber'>⚠️ Full Frame Analyzed (No Face Bounding Box)</span>", unsafe_allow_html=True)
+
+            with col_pred:
+                st.markdown("<div style='font-size: 0.85rem; font-family: monospace; color: #38bdf8; margin-bottom: 6px;'>SPATIAL INFERENCE VERDICT</div>", unsafe_allow_html=True)
+
+                inf = proc_res.get("inference")
+                if inf and inf.get("status") == "success":
+                    p_real = inf["mean_real_prob"]
+                    p_fake = inf["mean_fake_prob"]
+                    pred_label = inf["overall_prediction"]
+
+                    is_real = pred_label == "REAL"
+                    gauge_color = "#10b981" if is_real else "#ef4444"
+                    badge_style = "badge-green" if is_real else "badge-rose"
+                    verdict_text = "AUTHENTIC HUMAN FACE" if is_real else "SYNTHETIC DEEPFAKE DETECTED"
+
+                    # Circular Gauge for Real Probability
+                    fig_snap_gauge = go.Figure(go.Indicator(
+                        mode="gauge+number",
+                        value=p_real,
+                        domain={'x': [0, 1], 'y': [0, 1]},
+                        number={'suffix': "%", 'font': {'size': 36, 'color': '#f8fafc'}},
+                        gauge={
+                            'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "#475569"},
+                            'bar': {'color': gauge_color, 'thickness': 0.28},
+                            'bgcolor': "rgba(15, 23, 42, 0.4)",
+                            'borderwidth': 0,
+                            'steps': [
+                                {'range': [0, 50], 'color': 'rgba(239, 68, 68, 0.15)'},
+                                {'range': [50, 100], 'color': 'rgba(16, 185, 129, 0.15)'}
+                            ],
+                            'threshold': {
+                                'line': {'color': "#ffffff", 'width': 3},
+                                'thickness': 0.75,
+                                'value': p_real
+                            }
+                        }
+                    ))
+                    fig_snap_gauge.update_layout(
+                        template="plotly_dark",
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        height=200,
+                        margin=dict(l=10, r=10, t=20, b=10)
+                    )
+                    st.plotly_chart(fig_snap_gauge, use_container_width=True)
+
+                    st.markdown(f"""
+                    <div style="text-align: center; margin-bottom: 12px;">
+                        <span class="badge {badge_style}" style="font-size: 0.9rem; padding: 6px 16px;">{verdict_text}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    # Telemetry Card
+                    st.markdown(f"""
+                    <div class="glass-card" style="padding: 14px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div>
+                                <div class="hud-metric-title">PROB REAL</div>
+                                <div style="font-size: 1.2rem; font-weight: 700; color: #10b981;">{p_real}%</div>
+                            </div>
+                            <div>
+                                <div class="hud-metric-title">PROB FAKE</div>
+                                <div style="font-size: 1.2rem; font-weight: 700; color: #ef4444;">{p_fake}%</div>
+                            </div>
+                            <div>
+                                <div class="hud-metric-title">LATENCY</div>
+                                <div style="font-size: 1.1rem; font-weight: 600; color: #38bdf8;">{snap_latency}s</div>
+                            </div>
+                            <div>
+                                <div class="hud-metric-title">MODEL</div>
+                                <div style="font-size: 0.95rem; font-weight: 600; color: #cbd5e1;">EfficientNet-B0</div>
+                            </div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.warning("Spatial checkpoint is awaiting load.")
+
+    # -----------------------------------------------------
+    # TAB 3: LIVE VOICE CALL ANALYZER (AUDIO MICROPHONE)
+    # -----------------------------------------------------
+    with cam_tab3:
+        st.markdown("""
+        <div style="margin-bottom: 12px; font-size: 0.92rem; color: #cbd5e1;">
+            Record live speech from your microphone to inspect physical acoustic signatures, Mel-Frequency Cepstral Coefficients (MFCC), and voice continuity markers.
+        </div>
+        """, unsafe_allow_html=True)
+
+        audio_input_bytes = st.audio_input("Record live speech from microphone", key="live_mic_audio")
+
+        if audio_input_bytes is not None:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as t_audio:
+                t_audio.write(audio_input_bytes.getvalue())
+                audio_tmp_path = t_audio.name
+
+            with st.spinner("Extracting 16kHz speech waveform & computing MFCC acoustic spectrum..."):
+                a_res = audio_analyzer.analyze_audio(audio_tmp_path)
+
+            if a_res.get("has_audio"):
+                st.markdown("<br>", unsafe_allow_html=True)
+                col_a1, col_a2 = st.columns([1, 1.2])
+
+                with col_a1:
+                    st.markdown("<div style='font-size: 0.85rem; font-family: monospace; color: #38bdf8; margin-bottom: 6px;'>AUDIO PLAYBACK</div>", unsafe_allow_html=True)
+                    st.audio(audio_tmp_path)
+
+                    st.markdown(f"""
+                    <div class="glass-card" style="margin-top: 12px; padding: 14px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div>
+                                <div class="hud-metric-title">SPEECH RATIO</div>
+                                <div style="font-size: 1.3rem; font-weight: 700; color: #34d399;">{a_res['speech_ratio']}%</div>
+                            </div>
+                            <div>
+                                <div class="hud-metric-title">MEAN RMS</div>
+                                <div style="font-size: 1.3rem; font-weight: 700; color: #38bdf8;">{a_res['mean_rms']:.4f}</div>
+                            </div>
+                            <div>
+                                <div class="hud-metric-title">DURATION</div>
+                                <div style="font-size: 1.1rem; font-weight: 600; color: #f8fafc;">{a_res['duration']:.2f}s</div>
+                            </div>
+                            <div>
+                                <div class="hud-metric-title">SAMPLE RATE</div>
+                                <div style="font-size: 1.1rem; font-weight: 600; color: #c084fc;">16,000 Hz</div>
+                            </div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                with col_a2:
+                    st.markdown("<div class='hud-metric-title'>13-BAND MEL-FREQUENCY CEPSTRAL COEFFICIENTS (MFCC)</div>", unsafe_allow_html=True)
+                    fig_m_live = px.imshow(a_res["mfcc"], aspect="auto", color_continuous_scale="Viridis", labels=dict(x="Time Frame (512 hop)", y="MFCC Index", color="dB"))
+                    fig_m_live.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(15, 23, 42, 0.4)", height=220, margin=dict(l=20, r=20, t=10, b=20))
+                    st.plotly_chart(fig_m_live, use_container_width=True)
+
+                # Waveform
+                st.markdown("<div class='hud-metric-title'>NORMALIZED AMPLITUDE WAVEFORM</div>", unsafe_allow_html=True)
+                df_w_live = pd.DataFrame({"Time (s)": a_res["waveform_times"], "Amplitude": a_res["waveform"]})
+                fig_w_live = px.line(df_w_live, x="Time (s)", y="Amplitude", color_discrete_sequence=["#38bdf8"])
+                fig_w_live.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(15, 23, 42, 0.4)", height=200, margin=dict(l=30, r=20, t=10, b=30))
+                st.plotly_chart(fig_w_live, use_container_width=True)
+            else:
+                st.warning("Unable to extract valid speech tracks from recording.")
+
+    # -----------------------------------------------------
+    # TAB 4: HARDWARE CAMERA PROBE (LOCAL & CLOUD)
+    # -----------------------------------------------------
+    with cam_tab4:
+        st.markdown("""
+        <div style="margin-bottom: 14px; font-size: 0.92rem; color: #cbd5e1;">
+            DeepShield hardware probe checks for local OpenCV camera devices and explains cloud container vs. client browser capture.
+        </div>
+        """, unsafe_allow_html=True)
+
+        local_cams = LiveCameraProcessor.probe_local_cameras()
+
+        if local_cams:
+            st.success(f"✓ Found {len(local_cams)} local hardware camera device(s) on host system.")
+            for c in local_cams:
+                st.markdown(f"""
+                <div class="glass-card" style="padding: 12px; margin-bottom: 8px;">
+                    <div style="font-size: 0.95rem; font-weight: 700; color: #38bdf8;">Camera Device Index #{c['index']}</div>
+                    <div style="font-size: 0.85rem; color: #94a3b8; font-family: monospace;">Resolution: {c['width']}×{c['height']} px | Native FPS: {c['fps']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div class="glass-card" style="border-left: 3px solid #38bdf8;">
+                <div style="font-size: 1.05rem; font-weight: 700; color: #f8fafc;">
+                    🌐 Cloud Container Mode Active
+                </div>
+                <p style="color: #94a3b8; font-size: 0.9rem; margin-top: 6px; line-height: 1.5;">
+                    When hosted on cloud containers (such as <code>deepfakeaudio.streamlit.app</code>) or in sandboxed environments, 
+                    the host server does not have direct physical <code>/dev/video*</code> camera hardware attached.
+                </p>
+                <p style="color: #cbd5e1; font-size: 0.88rem; margin-top: 4px; line-height: 1.5;">
+                    DeepShield seamlessly handles this via <strong>Tab 1 (Browser Live Video Recorder)</strong> and <strong>Tab 2 (Webcam Snapshot Scanner)</strong>, 
+                    which interface directly with your client device's camera hardware over HTTPS without requiring server-side video devices!
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+
+
+# ---------------------------------------------------------
+# PAGE 3: MULTIMODAL FORENSIC LAB (FILE & LIVE SELECTION)
 # ---------------------------------------------------------
 elif selected_page == "🎬 Multimodal Forensic Lab":
     st.markdown("""
@@ -366,6 +962,7 @@ elif selected_page == "🎬 Multimodal Forensic Lab":
         "🎬 Synthetic Demo 1 (Synchronized Speech)",
         "⚠️ Synthetic Demo 2 (Out-of-Phase / Desynced)",
         "🔇 Synthetic Demo 3 (Stripped Audio / Muted)",
+        "📹 Live Camera & Call Feed",
         "📤 Upload Custom File"
     ]
     selected_preset = st.selectbox("Preset Selector", preset_options, label_visibility="collapsed")
@@ -385,6 +982,13 @@ elif selected_page == "🎬 Multimodal Forensic Lab":
     elif "Demo 3" in selected_preset:
         video_path = "assets/samples/sample_no_audio.mp4"
         video_title = "Muted_Video_No_Audio.mp4"
+    elif "Live Camera" in selected_preset:
+        st.markdown("<br>", unsafe_allow_html=True)
+        rec_data = render_live_webcam_recorder(key="lab_embedded_recorder")
+        if rec_data and rec_data.get("video_path") and os.path.exists(rec_data["video_path"]):
+            video_path = rec_data["video_path"]
+            video_title = f"Live_Call_Recording_{int(time.time())}.mp4"
+            st.success(f"✓ Live Call Captured ({rec_data.get('duration', 0.0):.1f}s, {round(rec_data['raw_size']/1024, 1)} KB). Ready for analysis!")
     else:
         uploaded_file = st.file_uploader(
             "Drag & Drop Video File (MP4, MOV, AVI, WEBM)",
@@ -445,237 +1049,4 @@ elif selected_page == "🎬 Multimodal Forensic Lab":
                 trust_res = trust_engine.evaluate(vis_res, audio_res, sync_res)
                 exec_latency = round(time.time() - t_start, 3)
 
-            st.markdown(f"""
-            <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px 18px; margin: 16px 0;">
-                <span style="color: #34d399; font-weight: 600;">✓ Forensic Pipeline Executed Successfully</span>
-                <span style="font-family: monospace; font-size: 0.85rem; color: #94a3b8;">LATENCY: {exec_latency}s</span>
-            </div>
-            """, unsafe_allow_html=True)
-
-            # Forensic Tabs
-            tab_verdict, tab_visual, tab_audio, tab_sync = st.tabs([
-                "🛡️ MULTIMODAL VERDICT",
-                "👁️ SPATIAL CNN FRAMES",
-                "🔊 ACOUSTIC SPECTRA",
-                "👄 LIP SYNCHRONIZATION"
-            ])
-
-            # TAB 1: TRUST VERDICT
-            with tab_verdict:
-                score = trust_res["trust_score"]
-                verdict = trust_res["authenticity_label"]
-                v_color = trust_res.get("verdict_color", "emerald")
-
-                if v_color == "emerald":
-                    gauge_color = "#10b981"
-                    badge_style = "badge-green"
-                elif v_color == "amber":
-                    gauge_color = "#f59e0b"
-                    badge_style = "badge-amber"
-                else:
-                    gauge_color = "#ef4444"
-                    badge_style = "badge-amber"
-
-                col_gauge, col_hud = st.columns([1, 1.3])
-
-                with col_gauge:
-                    # High-Tech Plotly Radial Gauge
-                    fig_gauge = go.Figure(go.Indicator(
-                        mode="gauge+number",
-                        value=score if score is not None else 0,
-                        domain={'x': [0, 1], 'y': [0, 1]},
-                        number={'suffix': "/100", 'font': {'size': 38, 'color': '#f8fafc', 'family': 'Plus Jakarta Sans'}},
-                        gauge={
-                            'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "#475569"},
-                            'bar': {'color': gauge_color, 'thickness': 0.28},
-                            'bgcolor': "rgba(15, 23, 42, 0.4)",
-                            'borderwidth': 0,
-                            'steps': [
-                                {'range': [0, 45], 'color': 'rgba(239, 68, 68, 0.15)'},
-                                {'range': [45, 65], 'color': 'rgba(245, 158, 11, 0.15)'},
-                                {'range': [65, 100], 'color': 'rgba(16, 185, 129, 0.15)'}
-                            ],
-                            'threshold': {
-                                'line': {'color': "#ffffff", 'width': 3},
-                                'thickness': 0.75,
-                                'value': score if score is not None else 0
-                            }
-                        }
-                    ))
-                    fig_gauge.update_layout(
-                        template="plotly_dark",
-                        paper_bgcolor="rgba(0,0,0,0)",
-                        plot_bgcolor="rgba(0,0,0,0)",
-                        height=280,
-                        margin=dict(l=20, r=20, t=30, b=10)
-                    )
-                    st.plotly_chart(fig_gauge, use_container_width=True)
-
-                    st.markdown(f"""
-                    <div style="text-align: center;">
-                        <span class="badge {badge_style}" style="font-size: 0.9rem; padding: 6px 16px;">VERDICT: {verdict}</span>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                with col_hud:
-                    st.markdown("""
-                    <div class="hud-metric-title">FORENSIC SIGNAL CONTRIBUTIONS</div>
-                    """, unsafe_allow_html=True)
-
-                    # 3 Signal Contribution HUD Cards
-                    c1, c2, c3 = st.columns(3)
-                    with c1:
-                        st.markdown("""
-                        <div class="glass-card" style="padding: 14px;">
-                            <div class="hud-metric-title">SPATIAL CNN</div>
-                        """, unsafe_allow_html=True)
-                        if vis_res.get("status") == "success":
-                            v_pts = round(vis_res['mean_real_prob'] * 0.75, 1)
-                            st.markdown(f"""
-                            <div class="hud-metric-value" style="font-size: 1.4rem; color: #38bdf8;">{vis_res['mean_real_prob']}%</div>
-                            <div class="hud-metric-sub">+{v_pts} pts (75% wt)</div>
-                            """, unsafe_allow_html=True)
-                        else:
-                            st.markdown("<div style='color: #fbbf24; font-size: 0.85rem;'>Awaiting .pth</div>", unsafe_allow_html=True)
-                        st.markdown("</div>", unsafe_allow_html=True)
-
-                    with c2:
-                        st.markdown("""
-                        <div class="glass-card" style="padding: 14px;">
-                            <div class="hud-metric-title">AUDIO CADENCE</div>
-                        """, unsafe_allow_html=True)
-                        if audio_res.get("has_audio"):
-                            st.markdown(f"""
-                            <div class="hud-metric-value" style="font-size: 1.4rem; color: #c084fc;">{audio_res['speech_ratio']}%</div>
-                            <div class="hud-metric-sub">RMS: {audio_res['mean_rms']:.3f}</div>
-                            """, unsafe_allow_html=True)
-                        else:
-                            st.markdown("<div style='color: #ef4444; font-size: 0.85rem;'>No Audio Track</div>", unsafe_allow_html=True)
-                        st.markdown("</div>", unsafe_allow_html=True)
-
-                    with c3:
-                        st.markdown("""
-                        <div class="glass-card" style="padding: 14px;">
-                            <div class="hud-metric-title">LIP SYNC</div>
-                        """, unsafe_allow_html=True)
-                        if sync_res.get("success"):
-                            s_norm = min(100.0, (sync_res['sync_score'] / 25.0) * 100.0)
-                            s_pts = round(0.25 * s_norm, 1)
-                            st.markdown(f"""
-                            <div class="hud-metric-value" style="font-size: 1.4rem; color: #34d399;">{sync_res['sync_score']:.1f}</div>
-                            <div class="hud-metric-sub">+{s_pts} pts (25% wt)</div>
-                            """, unsafe_allow_html=True)
-                        else:
-                            st.markdown("<div style='color: #ef4444; font-size: 0.85rem;'>0 pts (Nullified)</div>", unsafe_allow_html=True)
-                        st.markdown("</div>", unsafe_allow_html=True)
-
-                    # Diagnostic Reasoning Box
-                    st.markdown(f"""
-                    <div class="glass-card" style="margin-top: 12px; padding: 14px; border-left: 3px solid {gauge_color};">
-                        <div style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.5;">{trust_res['reasoning']}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-            # TAB 2: VISUAL CNN ANALYSIS
-            with tab_visual:
-                st.markdown("### 👁️ EfficientNet-B0 Frame Decomposition")
-                st.markdown("<div style='font-size: 0.8rem; font-family: monospace; color: #94a3b8; margin-bottom: 10px;'>UNIFORMLY EXTRACTED INSPECTION FRAMES (16 SAMPLES):</div>", unsafe_allow_html=True)
-
-                # Filmstrip Gallery
-                cols = st.columns(8)
-                for idx, (f_idx, img) in enumerate(frames[:8]):
-                    with cols[idx]:
-                        t_sec = timestamps[idx] if idx < len(timestamps) else 0.0
-                        st.markdown(f"<div class='filmstrip-card'><span style='font-size: 0.7rem; font-family: monospace; color: #38bdf8;'>F#{f_idx} ({t_sec:.1f}s)</span></div>", unsafe_allow_html=True)
-                        st.image(img, use_container_width=True)
-
-                cols2 = st.columns(8)
-                for idx, (f_idx, img) in enumerate(frames[8:16]):
-                    with cols2[idx]:
-                        actual_idx = idx + 8
-                        t_sec = timestamps[actual_idx] if actual_idx < len(timestamps) else 0.0
-                        st.markdown(f"<div class='filmstrip-card'><span style='font-size: 0.7rem; font-family: monospace; color: #38bdf8;'>F#{f_idx} ({t_sec:.1f}s)</span></div>", unsafe_allow_html=True)
-                        st.image(img, use_container_width=True)
-
-                st.divider()
-                if vis_res.get("status") == "success":
-                    st.markdown("#### 🧠 Frame-by-Frame Softmax Probability Activation")
-                    df_frames = pd.DataFrame(vis_res["frame_results"])
-                    fig_bars = px.bar(
-                        df_frames,
-                        x="frame_index",
-                        y=["prob_real", "prob_fake"],
-                        barmode="group",
-                        labels={"value": "Softmax Probability", "frame_index": "Video Frame Number"},
-                        color_discrete_map={"prob_real": "#10b981", "prob_fake": "#ef4444"}
-                    )
-                    fig_bars.update_layout(
-                        template="plotly_dark",
-                        paper_bgcolor="rgba(0,0,0,0)",
-                        plot_bgcolor="rgba(15, 23, 42, 0.4)",
-                        height=280,
-                        margin=dict(l=30, r=20, t=20, b=30)
-                    )
-                    st.plotly_chart(fig_bars, use_container_width=True)
-
-            # TAB 3: AUDIO ACOUSTICS
-            with tab_audio:
-                st.markdown("### 🔊 Physical Acoustic Signal Decomposition")
-                if audio_res.get("has_audio"):
-                    # Waveform
-                    st.markdown("<div class='hud-metric-title'>NORMALIZED AMPLITUDE WAVEFORM (16kHz DOWNSAMPLED)</div>", unsafe_allow_html=True)
-                    df_wave = pd.DataFrame({"Time (s)": audio_res["waveform_times"], "Amplitude": audio_res["waveform"]})
-                    fig_w = px.line(df_wave, x="Time (s)", y="Amplitude", color_discrete_sequence=["#38bdf8"])
-                    fig_w.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(15, 23, 42, 0.4)", height=220, margin=dict(l=30, r=20, t=10, b=30))
-                    st.plotly_chart(fig_w, use_container_width=True)
-
-                    # MFCC
-                    st.markdown("<div class='hud-metric-title'>13-BAND MEL-FREQUENCY CEPSTRAL COEFFICIENTS (MFCC HEATMAP)</div>", unsafe_allow_html=True)
-                    fig_m = px.imshow(audio_res["mfcc"], aspect="auto", color_continuous_scale="Viridis", labels=dict(x="Time Frame (512 hop)", y="MFCC Index", color="dB"))
-                    fig_m.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(15, 23, 42, 0.4)", height=240, margin=dict(l=30, r=20, t=10, b=30))
-                    st.plotly_chart(fig_m, use_container_width=True)
-                else:
-                    st.warning("⚠️ No active audio container detected.")
-
-            # TAB 4: AUDIO-LIP SYNCHRONIZATION
-            with tab_sync:
-                st.markdown("### 👄 Temporal Audio–Lip Synchronization")
-                if sync_res.get("success"):
-                    # Alignment Curve
-                    st.markdown("<div class='hud-metric-title'>TEMPORAL COHERENCE: SPEECH VOCAL ENERGY vs. LIP APERTURE</div>", unsafe_allow_html=True)
-                    df_sync = pd.DataFrame({
-                        "Time (s)": sync_res["audio_times"],
-                        "Speech Energy (RMS > Mean)": sync_res["speech_activity"],
-                        "Normalized Lip Aperture": sync_res["mouth_norm"]
-                    })
-                    fig_s = px.line(
-                        df_sync,
-                        x="Time (s)",
-                        y=["Speech Energy (RMS > Mean)", "Normalized Lip Aperture"],
-                        color_discrete_map={"Speech Energy (RMS > Mean)": "#38bdf8", "Normalized Lip Aperture": "#ec4899"}
-                    )
-                    fig_s.update_layout(
-                        template="plotly_dark",
-                        paper_bgcolor="rgba(0,0,0,0)",
-                        plot_bgcolor="rgba(15, 23, 42, 0.4)",
-                        height=300,
-                        margin=dict(l=30, r=20, t=20, b=30)
-                    )
-                    st.plotly_chart(fig_s, use_container_width=True)
-
-                    # Benchmark explanation
-                    st.markdown(f"""
-                    <div class="glass-card" style="border-left: 3px solid #10b981; margin-top: 14px;">
-                        <span class="badge badge-green">TOP-TIER HUMAN SYNCHRONIZATION</span>
-                        <div style="font-size: 1.1rem; font-weight: 700; color: #f8fafc; margin-top: 6px;">Sync Score: {sync_res['sync_score']:.2f} / 100 (Pearson r = {sync_res['correlation']:.4f})</div>
-                        <p style="color: #cbd5e1; font-size: 0.88rem; margin-top: 4px;">
-                            In the 230-video FakeAVCeleb experiment, authentic human speech averages only <strong>9.37</strong> (median 6.48). 
-                            Scores above 15.0 represent high synchronization due to non-linear bilabial consonants ('M', 'B', 'P') where human lips close during vocalization.
-                        </p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.warning(f"⚠️ Synchronization Inactive: {sync_res.get('reason', 'Missing stream')}")
-
-
-
+            render_multimodal_forensic_results(trust_res, vis_res, audio_res, sync_res, frames, timestamps, exec_latency)

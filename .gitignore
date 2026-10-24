@@ -25,3 +25,7 @@ Thumbs.db
 *.pth
 *.pt
 !models/FINAL_EfficientNet_B0_FakeAVCeleb.pth
+
+# Scratch & temporary testing
+scratch/
+

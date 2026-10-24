@@ -47,16 +47,18 @@ The application will start immediately at: `http://localhost:8501`.
 
 ---
 
-### Minute 2:30 – 3:15 | Testing Edge Cases & Desynchronization (Page 2)
+### Minute 2:30 – 3:30 | Live Camera & Video Call Operation (Page 2)
+- **What to show:** Open **"📹 Live Camera & Call Lab"**.
 - **What to do:**
-  1. Switch the sample selector to **"Sample 2: Desynchronized Face (Out-of-Phase / Dubbed Video)"** and click **Run Full Multimodal Inspection**.
-  2. Show that the Sync Score drops to **0.0 / 100** with a negative Pearson correlation ($r \approx -0.55$).
-  3. Switch to **"Sample 3: Edge Case Video (No Audio Track Container)"** and click run.
+  1. Demonstrate **Live Video Call Recorder**:
+     > *"To simulate an active video call, our system features an in-browser live recording suite. We record a 5-second video and speech sample directly through the webcam and microphone."*
+  2. Click **"Execute Multimodal Forensic Analysis on Live Call"** and show the instant trust score, frame decomposition, and lip-sync alignment curves computed directly from the live feed.
+  3. Switch to **Instant Webcam Facial Scanner**, take a live photo, and show how MediaPipe immediately locks onto 478 biometric landmarks and runs EfficientNet-B0 inference in ~40ms to classify the face as authentic or deepfake!
 - **What to say:**
-  > *"A critical test of any forensic tool is resilience against edge cases. When we run our desynchronized video—simulating an AI voice dub or spliced visual—our Pearson correlation turns negative, dropping the sync score to zero and flagging the mismatch.
-  > When we test a muted video without an audio track, DeepShield handles it gracefully without crashing, explaining that synchronization is inactive due to missing audio and adapting the fusion formula dynamically."*
+  > *"This proves that our pipeline is not just an offline file analyzer, but operates directly in live video call and webcam contexts, detecting facial synthesis artifacts and verifying biometric speech-lip cadence in real time."*
 
 ---
+
 
 ### Minute 3:15 – 4:15 | Experimental Dataset Results & Critical Nuances (Page 3)
 - **What to show:** Click **"📊 Dataset & Experiments"**.

@@ -132,11 +132,12 @@ Empirical data from `results/full_dataset_synchronization_results.csv`:
 
 ---
 
-## 🛡️ Implementation Status Matrix
-
 | Component | Status | Implementation Details |
 | :--- | :--- | :--- |
 | **Web UI & Dashboard** | ✅ Complete | Streamlit cybersecurity dark theme with real-time telemetry |
+| **Live Video Call Recorder** | ✅ Complete | In-browser HTML5 MediaRecorder (5–12s) capturing live video + audio |
+| **Webcam Biometric Scanner** | ✅ Complete | Instant webcam snapshot with 478 MediaPipe facial landmarks & CNN inference |
+| **Live Voice Call Profiler** | ✅ Complete | Real-time microphone audio input, 16kHz speech waveform & MFCC heatmap |
 | **Frame Sampler & Metadata** | ✅ Complete | OpenCV uniform frame sampling with resolution & FPS metrics |
 | **EfficientNet-B0 Inference** | ✅ Complete | PyTorch pipeline; ready for checkpoint; verified benchmark fallbacks |
 | **Audio Feature Extraction** | ✅ Complete | 16kHz WAV decomposition, MFCC heatmaps, RMS speech envelope |
