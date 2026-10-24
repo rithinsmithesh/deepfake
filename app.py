@@ -357,7 +357,6 @@ def get_sync_analyzer():
     task_model = "models/face_landmarker.task"
     return DeepShieldSyncAnalyzer(task_model_path=task_model)
 
-@st.cache_resource
 def get_trust_engine():
     return DeepShieldTrustEngine(visual_weight=0.75, sync_weight=0.25)
 
@@ -411,15 +410,22 @@ def render_multimodal_forensic_results(trust_res, vis_res, audio_res, sync_res, 
     if "Live Video Call" in prof_choice:
         w_vis, w_sync = 0.60, 0.40
     elif "Visual-Dominant" in prof_choice:
-        w_vis, w_85 = 0.85, 0.15
-        w_sync = 0.15
+        w_vis, w_sync = 0.85, 0.15
     elif "50:50" in prof_choice:
         w_vis, w_sync = 0.50, 0.50
     else:
         w_vis, w_sync = 0.75, 0.25
 
     if trust_engine_instance is not None:
-        trust_res = trust_engine_instance.evaluate(vis_res, audio_res, sync_res, visual_weight=w_vis, sync_weight=w_sync)
+        try:
+            trust_res = trust_engine_instance.evaluate(vis_res, audio_res, sync_res, visual_weight=w_vis, sync_weight=w_sync)
+        except TypeError:
+            try:
+                trust_engine_instance.visual_weight = w_vis
+                trust_engine_instance.sync_weight = w_sync
+                trust_res = trust_engine_instance.evaluate(vis_res, audio_res, sync_res)
+            except Exception:
+                trust_res = trust_engine_instance.evaluate(vis_res, audio_res, sync_res)
 
     score = trust_res.get("trust_score", 0.0) or 0.0
     deepfake_prob = trust_res.get("deepfake_probability", round(100.0 - score, 2))

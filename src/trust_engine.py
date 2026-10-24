@@ -10,10 +10,19 @@ class DeepShieldTrustEngine:
         self.visual_weight = visual_weight
         self.sync_weight = sync_weight
 
-    def evaluate(self, visual_result, audio_result, sync_result, visual_weight=None, sync_weight=None):
+    def evaluate(self, visual_result, audio_result, sync_result, visual_weight=None, sync_weight=None, *args, **kwargs):
         """
         Evaluates and combines genuine analysis outputs into an exact multimodal verdict score.
         """
+        if visual_weight is None:
+            visual_weight = kwargs.get("visual_weight", None)
+        if sync_weight is None:
+            sync_weight = kwargs.get("sync_weight", None)
+        if len(args) >= 1 and visual_weight is None:
+            visual_weight = args[0]
+        if len(args) >= 2 and sync_weight is None:
+            sync_weight = args[1]
+
         w_vis = visual_weight if visual_weight is not None else self.visual_weight
         w_sync = sync_weight if sync_weight is not None else self.sync_weight
 
