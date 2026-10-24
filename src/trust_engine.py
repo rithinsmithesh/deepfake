@@ -10,10 +10,19 @@ class DeepShieldTrustEngine:
         self.visual_weight = visual_weight
         self.sync_weight = sync_weight
 
-    def evaluate(self, visual_result, audio_result, sync_result):
+    def evaluate(self, visual_result, audio_result, sync_result, visual_weight=None, sync_weight=None):
         """
-        Evaluates and combines genuine analysis outputs.
+        Evaluates and combines genuine analysis outputs into an exact multimodal verdict score.
         """
+        w_vis = visual_weight if visual_weight is not None else self.visual_weight
+        w_sync = sync_weight if sync_weight is not None else self.sync_weight
+
+        # Normalize weights if sum != 1.0
+        total_w = w_vis + w_sync
+        if total_w > 0:
+            w_vis = w_vis / total_w
+            w_sync = w_sync / total_w
+
         components = {
             "visual": {
                 "available": visual_result is not None and visual_result.get("status") == "success",
@@ -34,8 +43,10 @@ class DeepShieldTrustEngine:
             return {
                 "status": "partial_signals",
                 "trust_score": None,
+                "deepfake_probability": None,
                 "authenticity_label": "Inconclusive (Visual Checkpoint Missing)",
                 "confidence_level": "N/A",
+                "forensic_grade": "INCONCLUSIVE",
                 "components": components,
                 "reasoning": (
                     "A preliminary Trust Score cannot be ethically calculated without visual model weights. "
@@ -47,64 +58,95 @@ class DeepShieldTrustEngine:
 
         # Case 2: Visual model is available
         vis_details = visual_result
-        vis_real_prob = vis_details["mean_real_prob"]  # 0 to 100
+        vis_real_prob = float(vis_details["mean_real_prob"])  # 0 to 100
+        vis_fake_prob = float(vis_details["mean_fake_prob"])
 
         # Subcase A: Audio and Lip Sync are both available
         if components["sync"]["available"]:
             sync_details = sync_result
-            sync_score = sync_details["sync_score"]  # 0 to 100
+            sync_score = float(sync_details["sync_score"])  # 0 to 100
             # Scale sync score to a 0-100 authenticity scale based on FakeAVCeleb empirical real-world distribution
             # In FakeAVCeleb, typical real videos scored between 5 and 25
             normalized_sync_authenticity = min(100.0, (sync_score / 25.0) * 100.0)
 
-            trust_score = (self.visual_weight * vis_real_prob) + (self.sync_weight * normalized_sync_authenticity)
-            trust_score = round(max(0.0, min(100.0, trust_score)), 2)
+            vis_pts = round(w_vis * vis_real_prob, 2)
+            sync_pts = round(w_sync * normalized_sync_authenticity, 2)
+
+            trust_score = round(max(0.0, min(100.0, vis_pts + sync_pts)), 2)
+            deepfake_probability = round(max(0.0, min(100.0, 100.0 - trust_score)), 2)
 
             if trust_score >= 65.0:
-                auth_label = "Likely Authentic"
+                auth_label = "Verified Authentic (Human)"
                 verdict_color = "emerald"
+                forensic_grade = "GRADE A (Authentic Human)" if trust_score >= 80.0 else "GRADE B (Likely Authentic)"
             elif trust_score >= 40.0:
-                auth_label = "Suspicious / Inconclusive"
+                auth_label = "Suspicious / Inconclusive Anomaly"
                 verdict_color = "amber"
+                forensic_grade = "GRADE C (Inconclusive Anomaly)"
             else:
-                auth_label = "Likely Manipulated (Deepfake)"
+                auth_label = "Synthetic Deepfake Detected"
                 verdict_color = "rose"
+                forensic_grade = "GRADE F (Deepfake Tampered)"
+
+            # Confidence level calculation
+            dist_from_mid = abs(trust_score - 50.0)
+            if dist_from_mid >= 25.0:
+                confidence_rating = f"HIGH ({round(50.0 + dist_from_mid, 1)}% certainty)"
+            elif dist_from_mid >= 12.0:
+                confidence_rating = f"MODERATE ({round(50.0 + dist_from_mid, 1)}% certainty)"
+            else:
+                confidence_rating = f"MARGINAL ({round(50.0 + dist_from_mid, 1)}% boundary)"
 
             reasoning = (
-                f"Multimodal Fusion: Visual feature authenticity probability is {vis_real_prob:.1f}%, "
-                f"and Audio-Lip synchronization score is {sync_score:.1f}/100 "
-                f"(normalized temporal consistency: {normalized_sync_authenticity:.1f}%). "
-                f"Combined weighted Trust Score is {trust_score:.1f}/100."
+                f"Multimodal Fusion: Spatial CNN authenticity is {vis_real_prob:.1f}% (+{vis_pts:.1f} pts at {round(w_vis*100)}% weight). "
+                f"Audio-Lip sync score is {sync_score:.1f}/100 (normalized temporal coherence: {normalized_sync_authenticity:.1f}%, +{sync_pts:.1f} pts at {round(w_sync*100)}% weight). "
+                f"Exact Multimodal Trust Score: {trust_score:.2f}/100 | Deepfake Manipulation Risk: {deepfake_probability:.2f}%."
             )
 
         # Subcase B: No audio or synchronization failed
         else:
-            # Forensic Integrity: When audio is missing or stripped, cross-modal verification is impossible.
-            # We do NOT re-inflate visual weight to 100%. Instead, the missing 25% sync modality contributes 0,
-            # which naturally penalizes videos with stripped audio tracks to prevent evasion attacks.
-            trust_score = round(self.visual_weight * vis_real_prob, 2)
-            
-            # Since an entire forensic modality is missing, max verdict is capped at "Inconclusive / Degraded"
+            vis_pts = round(w_vis * vis_real_prob, 2)
+            sync_pts = 0.0
+            normalized_sync_authenticity = 0.0
+            sync_score = 0.0
+
+            trust_score = round(max(0.0, min(100.0, vis_pts)), 2)
+            deepfake_probability = round(max(0.0, min(100.0, 100.0 - trust_score)), 2)
+
             if trust_score >= 45.0:
                 auth_label = "Inconclusive / Degraded (Audio Track Missing)"
                 verdict_color = "amber"
+                forensic_grade = "GRADE C- (Audio Modality Missing)"
             else:
                 auth_label = "Likely Manipulated (Visual Flags & Missing Audio)"
                 verdict_color = "rose"
+                forensic_grade = "GRADE F (Tampered & Missing Audio)"
 
+            confidence_rating = "DEGRADED (Single Modality)"
             sync_reason = components["sync"]["details"].get("reason") if components["sync"]["details"] else "No audio stream detected."
             reasoning = (
                 f"Degraded Multimodal Assessment: Video lacks valid audio synchronization ({sync_reason}). "
-                f"In forensic deepfake analysis, stripped audio is a potential evasion tactic. "
-                f"Therefore, the 25% temporal trust weight is nullified. Trust score is strictly the weighted visual "
-                f"evidence: {vis_real_prob:.1f}% × 0.75 = {trust_score:.1f} / 100."
+                f"Temporal trust weight is nullified. Exact Trust Score is strictly the weighted visual evidence: "
+                f"{vis_real_prob:.1f}% × {w_vis:.2f} = {trust_score:.2f} / 100 | Deepfake Risk: {deepfake_probability:.2f}%."
             )
 
         return {
             "status": "computed",
             "trust_score": trust_score,
+            "deepfake_probability": deepfake_probability,
             "authenticity_label": auth_label,
             "verdict_color": verdict_color,
+            "forensic_grade": forensic_grade,
+            "confidence_rating": confidence_rating,
+            "weights_used": {"visual": round(w_vis, 2), "sync": round(w_sync, 2)},
+            "points_breakdown": {
+                "visual_points": vis_pts,
+                "sync_points": sync_pts,
+                "visual_real_prob": vis_real_prob,
+                "visual_fake_prob": vis_fake_prob,
+                "sync_raw_score": sync_score,
+                "sync_normalized": normalized_sync_authenticity
+            },
             "components": components,
             "reasoning": reasoning,
             "formula_definition": self._get_formula_explanation()

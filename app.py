@@ -9,6 +9,8 @@ import os
 import sys
 import tempfile
 import time
+import datetime
+import hashlib
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -147,43 +149,98 @@ st.markdown("""
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 5px 12px;
+        padding: 6px 14px;
         border-radius: 9999px;
-        font-size: 0.76rem;
-        font-weight: 600;
+        font-size: 0.78rem;
+        font-weight: 700;
         letter-spacing: 0.05em;
         text-transform: uppercase;
         font-family: 'JetBrains Mono', monospace;
     }
     .badge-green {
-        background: rgba(16, 185, 129, 0.15);
+        background: rgba(16, 185, 129, 0.18);
         color: #34d399;
-        border: 1px solid rgba(16, 185, 129, 0.35);
+        border: 1px solid rgba(16, 185, 129, 0.45);
+        box-shadow: 0 0 15px rgba(16, 185, 129, 0.25);
     }
     .badge-amber {
-        background: rgba(245, 158, 11, 0.15);
+        background: rgba(245, 158, 11, 0.18);
         color: #fbbf24;
-        border: 1px solid rgba(245, 158, 11, 0.35);
+        border: 1px solid rgba(245, 158, 11, 0.45);
+        box-shadow: 0 0 15px rgba(245, 158, 11, 0.25);
     }
     .badge-cyan {
-        background: rgba(6, 182, 212, 0.15);
+        background: rgba(6, 182, 212, 0.18);
         color: #38bdf8;
-        border: 1px solid rgba(6, 182, 212, 0.35);
+        border: 1px solid rgba(6, 182, 212, 0.45);
+        box-shadow: 0 0 15px rgba(6, 182, 212, 0.25);
     }
     .badge-purple {
-        background: rgba(147, 51, 234, 0.15);
+        background: rgba(147, 51, 234, 0.18);
         color: #c084fc;
-        border: 1px solid rgba(147, 51, 234, 0.35);
+        border: 1px solid rgba(147, 51, 234, 0.45);
+        box-shadow: 0 0 15px rgba(147, 51, 234, 0.25);
     }
     .badge-rose {
-        background: rgba(239, 68, 68, 0.15);
+        background: rgba(239, 68, 68, 0.18);
         color: #f87171;
-        border: 1px solid rgba(239, 68, 68, 0.35);
+        border: 1px solid rgba(239, 68, 68, 0.45);
+        box-shadow: 0 0 15px rgba(239, 68, 68, 0.25);
+    }
+
+    /* Enhanced Verdict Banner */
+    .verdict-banner {
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(24, 33, 56, 0.92) 100%);
+        border-radius: 16px;
+        padding: 24px;
+        margin: 20px 0;
+        backdrop-filter: blur(20px);
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    .verdict-banner.emerald {
+        border: 2px solid rgba(16, 185, 129, 0.5);
+        box-shadow: 0 12px 40px rgba(16, 185, 129, 0.2), inset 0 1px 0 rgba(16, 185, 129, 0.3);
+    }
+    .verdict-banner.amber {
+        border: 2px solid rgba(245, 158, 11, 0.5);
+        box-shadow: 0 12px 40px rgba(245, 158, 11, 0.2), inset 0 1px 0 rgba(245, 158, 11, 0.3);
+    }
+    .verdict-banner.rose {
+        border: 2px solid rgba(239, 68, 68, 0.5);
+        box-shadow: 0 12px 40px rgba(239, 68, 68, 0.2), inset 0 1px 0 rgba(239, 68, 68, 0.3);
+    }
+
+    /* KPI Holographic Tiles */
+    .kpi-card {
+        background: rgba(11, 15, 25, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 18px 14px;
+        text-align: center;
+        transition: all 0.25s ease;
+    }
+    .kpi-card:hover {
+        transform: translateY(-3px);
+        border-color: #38bdf8;
+        box-shadow: 0 8px 24px rgba(56, 189, 248, 0.15);
+    }
+
+    /* Mathematical Formula Box */
+    .math-formula-box {
+        background: rgba(15, 23, 42, 0.85);
+        border: 1px solid rgba(56, 189, 248, 0.3);
+        border-left: 4px solid #38bdf8;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin: 14px 0;
+        font-family: 'JetBrains Mono', monospace;
     }
 
     /* Glassmorphism Cards */
     .glass-card {
-        background: rgba(15, 23, 42, 0.75);
+        background: rgba(15, 23, 42, 0.78);
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 14px;
         padding: 20px;
@@ -192,8 +249,8 @@ st.markdown("""
         transition: all 0.2s ease-in-out;
     }
     .glass-card:hover {
-        border-color: rgba(56, 189, 248, 0.3);
-        box-shadow: 0 12px 36px rgba(56, 189, 248, 0.08);
+        border-color: rgba(56, 189, 248, 0.35);
+        box-shadow: 0 12px 36px rgba(56, 189, 248, 0.1);
     }
 
     /* HUD Metrics */
@@ -261,11 +318,19 @@ st.markdown("""
     /* Filmstrip Gallery */
     .filmstrip-card {
         background: #0b0f19;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 8px;
-        padding: 4px;
+        border: 1.5px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        padding: 5px;
         text-align: center;
-        transition: transform 0.15s ease;
+        transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .filmstrip-card.real-frame {
+        border-color: rgba(16, 185, 129, 0.6);
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+    }
+    .filmstrip-card.fake-frame {
+        border-color: rgba(239, 68, 68, 0.6);
+        box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
     }
     .filmstrip-card:hover {
         transform: scale(1.05);
@@ -317,145 +382,339 @@ live_camera_processor = get_live_camera_processor()
 # ---------------------------------------------------------
 # Reusable Forensic Tab Rendering Function
 # ---------------------------------------------------------
-def render_multimodal_forensic_results(trust_res, vis_res, audio_res, sync_res, frames, timestamps, exec_latency):
+def render_multimodal_forensic_results(trust_res, vis_res, audio_res, sync_res, frames, timestamps, exec_latency, trust_engine_instance=None):
     """Renders the comprehensive 4-tab forensic report with radial gauge and diagnostic curves."""
+    
+    # Sensitivity profile selection
+    col_prof, col_status = st.columns([1.3, 1])
+    with col_prof:
+        prof_choice = st.selectbox(
+            "🎯 FORENSIC MULTIMODAL SENSITIVITY PROFILE",
+            [
+                "⚖️ Balanced Standard (75% Spatial CNN / 25% Temporal Sync)",
+                "📞 Live Video Call Sensitive (60% Spatial CNN / 40% Temporal Sync)",
+                "👁️ Visual-Dominant Priority (85% Spatial CNN / 15% Temporal Sync)",
+                "🎚️ 50:50 Dual Modality (50% Spatial CNN / 50% Temporal Sync)"
+            ],
+            index=0,
+            key="forensic_profile_select"
+        )
+    with col_status:
+        st.markdown(f"""
+        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 10px 14px; margin-top: 18px; text-align: right;">
+            <span style="color: #34d399; font-weight: 600; font-size: 0.85rem;">✓ Forensic Analysis Executed</span><br>
+            <span style="font-family: monospace; font-size: 0.75rem; color: #94a3b8;">INFERENCE LATENCY: {exec_latency}s | {vis_res.get('device', 'cpu').upper()}</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # Dynamic Weight Re-evaluation
+    if "Live Video Call" in prof_choice:
+        w_vis, w_sync = 0.60, 0.40
+    elif "Visual-Dominant" in prof_choice:
+        w_vis, w_85 = 0.85, 0.15
+        w_sync = 0.15
+    elif "50:50" in prof_choice:
+        w_vis, w_sync = 0.50, 0.50
+    else:
+        w_vis, w_sync = 0.75, 0.25
+
+    if trust_engine_instance is not None:
+        trust_res = trust_engine_instance.evaluate(vis_res, audio_res, sync_res, visual_weight=w_vis, sync_weight=w_sync)
+
+    score = trust_res.get("trust_score", 0.0) or 0.0
+    deepfake_prob = trust_res.get("deepfake_probability", round(100.0 - score, 2))
+    verdict = trust_res.get("authenticity_label", "Evaluating...")
+    v_color = trust_res.get("verdict_color", "emerald")
+    forensic_grade = trust_res.get("forensic_grade", "GRADE A (Authentic Human)")
+    conf_rating = trust_res.get("confidence_rating", "HIGH")
+    points = trust_res.get("points_breakdown", {})
+
+    if v_color == "emerald":
+        gauge_color = "#10b981"
+        risk_color = "#10b981"
+        badge_style = "badge-green"
+        status_icon = "🛡️"
+        verdict_title = "VERIFIED AUTHENTIC (HUMAN MEDIA)"
+        verdict_tag = "AUTHENTIC HUMAN"
+    elif v_color == "amber":
+        gauge_color = "#f59e0b"
+        risk_color = "#f59e0b"
+        badge_style = "badge-amber"
+        status_icon = "⚠️"
+        verdict_title = "SUSPICIOUS / INCONCLUSIVE ANOMALY"
+        verdict_tag = "SUSPICIOUS"
+    else:
+        gauge_color = "#ef4444"
+        risk_color = "#ef4444"
+        badge_style = "badge-rose"
+        status_icon = "🚨"
+        verdict_title = "SYNTHETIC DEEPFAKE MANIPULATION DETECTED"
+        verdict_tag = "DEEPFAKE DETECTED"
+
+    # Audit signature hash
+    audit_hash = hashlib.sha256(f"{score}_{deepfake_prob}_{time.time()}".encode()).hexdigest()[:12].upper()
+    audit_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # 1. HERO VERDICT CERTIFICATE BANNER
     st.markdown(f"""
-    <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px 18px; margin: 16px 0;">
-        <span style="color: #34d399; font-weight: 600;">✓ Multimodal Forensic Pipeline Executed Successfully</span>
-        <span style="font-family: monospace; font-size: 0.85rem; color: #94a3b8;">INFERENCE LATENCY: {exec_latency}s</span>
+    <div class="verdict-banner {v_color}">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 14px; margin-bottom: 18px;">
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <span style="font-size: 2.2rem;">{status_icon}</span>
+                <div>
+                    <div style="font-size: 0.76rem; font-family: 'JetBrains Mono', monospace; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.1em;">
+                        DEEPSHIELD OFFICIAL FORENSIC VERDICT CERTIFICATE
+                    </div>
+                    <div style="font-size: 1.55rem; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                        {verdict_title}
+                    </div>
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <span class="badge {badge_style}" style="font-size: 0.85rem; padding: 6px 16px;">
+                    {forensic_grade}
+                </span>
+                <div style="font-size: 0.72rem; font-family: monospace; color: #94a3b8; margin-top: 6px;">
+                    AUDIT ID: #{audit_hash} | {audit_time}
+                </div>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;">
+            <div class="kpi-card">
+                <div class="hud-metric-title">EXACT AUTHENTICITY SCORE</div>
+                <div class="hud-metric-value" style="color: {gauge_color}; font-size: 2.2rem;">
+                    {score:.2f}<span style="font-size: 1.1rem; color: #94a3b8;">%</span>
+                </div>
+                <div class="hud-metric-sub">P(Authentic Real Human)</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="hud-metric-title">DEEPFAKE RISK PROBABILITY</div>
+                <div class="hud-metric-value" style="color: {'#ef4444' if deepfake_prob > 35 else '#34d399'}; font-size: 2.2rem;">
+                    {deepfake_prob:.2f}<span style="font-size: 1.1rem; color: #94a3b8;">%</span>
+                </div>
+                <div class="hud-metric-sub">P(Synthetic Manipulation)</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="hud-metric-title">STATISTICAL CONFIDENCE</div>
+                <div class="hud-metric-value" style="color: #38bdf8; font-size: 1.45rem; padding-top: 6px;">
+                    {conf_rating}
+                </div>
+                <div class="hud-metric-sub">Bimodal Fusion Certainty</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="hud-metric-title">FINAL VERDICT STATUS</div>
+                <div class="hud-metric-value" style="color: #f8fafc; font-size: 1.3rem; padding-top: 8px;">
+                    {verdict_tag}
+                </div>
+                <div class="hud-metric-sub">Decision Boundary Threshold</div>
+            </div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
+    # 2. TABBED FORENSIC BREAKDOWN
     tab_verdict, tab_visual, tab_audio, tab_sync = st.tabs([
-        "🛡️ MULTIMODAL VERDICT",
+        "🛡️ EXACT VERDICT SCOREBOARD",
         "👁️ SPATIAL CNN FRAMES",
         "🔊 ACOUSTIC SPECTRA",
         "👄 LIP SYNCHRONIZATION"
     ])
 
-    # TAB 1: TRUST VERDICT
+    # TAB 1: EXACT VERDICT SCOREBOARD
     with tab_verdict:
-        score = trust_res["trust_score"]
-        verdict = trust_res["authenticity_label"]
-        v_color = trust_res.get("verdict_color", "emerald")
+        col_g1, col_g2 = st.columns(2)
 
-        if v_color == "emerald":
-            gauge_color = "#10b981"
-            badge_style = "badge-green"
-        elif v_color == "amber":
-            gauge_color = "#f59e0b"
-            badge_style = "badge-amber"
-        else:
-            gauge_color = "#ef4444"
-            badge_style = "badge-rose"
-
-        col_gauge, col_hud = st.columns([1, 1.3])
-
-        with col_gauge:
-            fig_gauge = go.Figure(go.Indicator(
+        with col_g1:
+            fig_g1 = go.Figure(go.Indicator(
                 mode="gauge+number",
-                value=score if score is not None else 0,
+                value=score,
                 domain={'x': [0, 1], 'y': [0, 1]},
-                number={'suffix': "/100", 'font': {'size': 38, 'color': '#f8fafc', 'family': 'Plus Jakarta Sans'}},
+                title={'text': "AUTHENTICITY TRUST SCORE", 'font': {'size': 14, 'color': '#94a3b8', 'family': 'JetBrains Mono'}},
+                number={'suffix': "/100", 'font': {'size': 36, 'color': '#f8fafc', 'family': 'Plus Jakarta Sans'}},
                 gauge={
                     'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "#475569"},
-                    'bar': {'color': gauge_color, 'thickness': 0.28},
+                    'bar': {'color': gauge_color, 'thickness': 0.3},
                     'bgcolor': "rgba(15, 23, 42, 0.4)",
                     'borderwidth': 0,
                     'steps': [
-                        {'range': [0, 45], 'color': 'rgba(239, 68, 68, 0.15)'},
-                        {'range': [45, 65], 'color': 'rgba(245, 158, 11, 0.15)'},
-                        {'range': [65, 100], 'color': 'rgba(16, 185, 129, 0.15)'}
+                        {'range': [0, 40], 'color': 'rgba(239, 68, 68, 0.2)'},
+                        {'range': [40, 65], 'color': 'rgba(245, 158, 11, 0.2)'},
+                        {'range': [65, 100], 'color': 'rgba(16, 185, 129, 0.2)'}
                     ],
                     'threshold': {
                         'line': {'color': "#ffffff", 'width': 3},
-                        'thickness': 0.75,
-                        'value': score if score is not None else 0
+                        'thickness': 0.8,
+                        'value': score
                     }
                 }
             ))
-            fig_gauge.update_layout(
+            fig_g1.update_layout(
                 template="plotly_dark",
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
-                height=280,
+                height=250,
                 margin=dict(l=20, r=20, t=30, b=10)
             )
-            st.plotly_chart(fig_gauge, use_container_width=True)
+            st.plotly_chart(fig_g1, use_container_width=True)
 
+        with col_g2:
+            fig_g2 = go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=deepfake_prob,
+                domain={'x': [0, 1], 'y': [0, 1]},
+                title={'text': "DEEPFAKE THREAT RISK LEVEL", 'font': {'size': 14, 'color': '#94a3b8', 'family': 'JetBrains Mono'}},
+                number={'suffix': "%", 'font': {'size': 36, 'color': '#f8fafc', 'family': 'Plus Jakarta Sans'}},
+                gauge={
+                    'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "#475569"},
+                    'bar': {'color': '#ef4444' if deepfake_prob > 35 else '#34d399', 'thickness': 0.3},
+                    'bgcolor': "rgba(15, 23, 42, 0.4)",
+                    'borderwidth': 0,
+                    'steps': [
+                        {'range': [0, 35], 'color': 'rgba(16, 185, 129, 0.2)'},
+                        {'range': [35, 60], 'color': 'rgba(245, 158, 11, 0.2)'},
+                        {'range': [60, 100], 'color': 'rgba(239, 68, 68, 0.25)'}
+                    ],
+                    'threshold': {
+                        'line': {'color': "#ffffff", 'width': 3},
+                        'thickness': 0.8,
+                        'value': deepfake_prob
+                    }
+                }
+            ))
+            fig_g2.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                height=250,
+                margin=dict(l=20, r=20, t=30, b=10)
+            )
+            st.plotly_chart(fig_g2, use_container_width=True)
+
+        # EXACT CONTRIBUTION BREAKDOWN TABLE
+        st.markdown("<div class='hud-metric-title' style='margin-top: 14px;'>EXACT MULTIMODAL POINT CONTRIBUTIONS & ARITHMETIC</div>", unsafe_allow_html=True)
+        
+        c1, c2, c3, c4 = st.columns(4)
+        vis_pts = points.get("visual_points", round(vis_res.get("mean_real_prob", 50) * w_vis, 2))
+        sync_pts = points.get("sync_points", 0.0)
+        vis_real_p = points.get("visual_real_prob", vis_res.get("mean_real_prob", 0.0))
+        sync_raw = points.get("sync_raw_score", sync_res.get("sync_score", 0.0))
+        sync_norm = points.get("sync_normalized", 0.0)
+
+        with c1:
             st.markdown(f"""
-            <div style="text-align: center;">
-                <span class="badge {badge_style}" style="font-size: 0.9rem; padding: 6px 16px;">VERDICT: {verdict}</span>
+            <div class="glass-card" style="padding: 14px;">
+                <div class="hud-metric-title">SPATIAL CNN (VISUAL)</div>
+                <div class="hud-metric-value" style="font-size: 1.5rem; color: #38bdf8;">{vis_real_p:.1f}%</div>
+                <div class="hud-metric-sub">+{vis_pts:.2f} pts ({int(w_vis*100)}% wt)</div>
             </div>
             """, unsafe_allow_html=True)
 
-        with col_hud:
-            st.markdown("""
-            <div class="hud-metric-title">FORENSIC SIGNAL CONTRIBUTIONS</div>
-            """, unsafe_allow_html=True)
-
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                st.markdown("""
-                <div class="glass-card" style="padding: 14px;">
-                    <div class="hud-metric-title">SPATIAL CNN</div>
-                """, unsafe_allow_html=True)
-                if vis_res.get("status") == "success":
-                    v_pts = round(vis_res['mean_real_prob'] * 0.75, 1)
-                    st.markdown(f"""
-                    <div class="hud-metric-value" style="font-size: 1.4rem; color: #38bdf8;">{vis_res['mean_real_prob']}%</div>
-                    <div class="hud-metric-sub">+{v_pts} pts (75% wt)</div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.markdown("<div style='color: #fbbf24; font-size: 0.85rem;'>Awaiting .pth</div>", unsafe_allow_html=True)
-                st.markdown("</div>", unsafe_allow_html=True)
-
-            with c2:
-                st.markdown("""
-                <div class="glass-card" style="padding: 14px;">
-                    <div class="hud-metric-title">AUDIO CADENCE</div>
-                """, unsafe_allow_html=True)
-                if audio_res.get("has_audio"):
-                    st.markdown(f"""
-                    <div class="hud-metric-value" style="font-size: 1.4rem; color: #c084fc;">{audio_res['speech_ratio']}%</div>
-                    <div class="hud-metric-sub">RMS: {audio_res['mean_rms']:.3f}</div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.markdown("<div style='color: #ef4444; font-size: 0.85rem;'>No Audio Track</div>", unsafe_allow_html=True)
-                st.markdown("</div>", unsafe_allow_html=True)
-
-            with c3:
-                st.markdown("""
-                <div class="glass-card" style="padding: 14px;">
-                    <div class="hud-metric-title">LIP SYNC</div>
-                """, unsafe_allow_html=True)
-                if sync_res.get("success"):
-                    s_norm = min(100.0, (sync_res['sync_score'] / 25.0) * 100.0)
-                    s_pts = round(0.25 * s_norm, 1)
-                    st.markdown(f"""
-                    <div class="hud-metric-value" style="font-size: 1.4rem; color: #34d399;">{sync_res['sync_score']:.1f}</div>
-                    <div class="hud-metric-sub">+{s_pts} pts (25% wt)</div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.markdown("<div style='color: #ef4444; font-size: 0.85rem;'>0 pts (Nullified)</div>", unsafe_allow_html=True)
-                st.markdown("</div>", unsafe_allow_html=True)
-
+        with c2:
             st.markdown(f"""
-            <div class="glass-card" style="margin-top: 12px; padding: 14px; border-left: 3px solid {gauge_color};">
-                <div style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.5;">{trust_res['reasoning']}</div>
+            <div class="glass-card" style="padding: 14px;">
+                <div class="hud-metric-title">LIP SYNC COHERENCE</div>
+                <div class="hud-metric-value" style="font-size: 1.5rem; color: #34d399;">{sync_raw:.1f}</div>
+                <div class="hud-metric-sub">+{sync_pts:.2f} pts ({int(w_sync*100)}% wt, {sync_norm:.1f}% norm)</div>
             </div>
             """, unsafe_allow_html=True)
+
+        with c3:
+            st.markdown(f"""
+            <div class="glass-card" style="padding: 14px;">
+                <div class="hud-metric-title">ACOUSTIC CADENCE</div>
+                <div class="hud-metric-value" style="font-size: 1.5rem; color: #c084fc;">{audio_res.get('speech_ratio', 0.0)}%</div>
+                <div class="hud-metric-sub">Mean RMS: {audio_res.get('mean_rms', 0.0):.3f}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with c4:
+            st.markdown(f"""
+            <div class="glass-card" style="padding: 14px;">
+                <div class="hud-metric-title">SUMMED TRUST SCORE</div>
+                <div class="hud-metric-value" style="font-size: 1.5rem; color: {gauge_color};">{score:.2f}</div>
+                <div class="hud-metric-sub">Risk: {deepfake_prob:.2f}%</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # MATHEMATICAL PROOF BOX
+        st.markdown(f"""
+        <div class="math-formula-box">
+            <div style="color: #38bdf8; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px;">
+                📐 EXACT MULTIMODAL SCORE DERIVATION:
+            </div>
+            <div style="font-size: 0.95rem; color: #f8fafc; line-height: 1.7;">
+                • <strong>Authenticity Trust Score</strong> = (w<sub>vis</sub> × P<sub>real</sub>) + (w<sub>sync</sub> × S<sub>sync</sub><sup>norm</sup>)<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= ({w_vis:.2f} × {vis_real_p:.2f}%) + ({w_sync:.2f} × {sync_norm:.2f}%)<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= {vis_pts:.2f} + {sync_pts:.2f} = <span style="color: {gauge_color}; font-weight: 700;">{score:.2f} / 100.00</span><br>
+                • <strong>Deepfake Manipulation Risk</strong> = 100.00% - {score:.2f}% = <span style="color: {'#ef4444' if deepfake_prob > 35 else '#34d399'}; font-weight: 700;">{deepfake_prob:.2f}%</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # REASONING CARD
+        st.markdown(f"""
+        <div class="glass-card" style="margin-top: 14px; padding: 16px; border-left: 4px solid {gauge_color};">
+            <div style="font-weight: 600; color: #f8fafc; margin-bottom: 4px;">Forensic Telemetry Interpretation:</div>
+            <div style="font-size: 0.88rem; color: #cbd5e1; line-height: 1.6;">{trust_res.get('reasoning', '')}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # DOWNLOAD REPORT BUTTON
+        report_txt = f"""=== DEEPSHIELD FORENSIC VERDICT AUDIT REPORT ===
+Audit ID: #{audit_hash}
+Date/Time: {audit_time}
+Hardware Acceleration: {vis_res.get('device', 'cpu')}
+Inference Latency: {exec_latency}s
+
+1. FINAL FORENSIC VERDICT:
+- Verdict Classification: {verdict_title}
+- Forensic Grade: {forensic_grade}
+- Authenticity Trust Score: {score:.2f} / 100.00
+- Deepfake Manipulation Risk: {deepfake_prob:.2f}%
+- Statistical Confidence: {conf_rating}
+
+2. MULTIMODAL CONTRIBUTION BREAKDOWN:
+- Sensitivity Profile: {prof_choice}
+- Spatial CNN Real Probability: {vis_real_p:.2f}% (Contributed {vis_pts:.2f} pts at {int(w_vis*100)}% weight)
+- Audio-Lip Sync Raw Score: {sync_raw:.2f}/100 (Normalized: {sync_norm:.2f}%, Contributed {sync_pts:.2f} pts at {int(w_sync*100)}% weight)
+- Audio Cadence Speech Ratio: {audio_res.get('speech_ratio', 0.0)}%
+- Mean Audio RMS Energy: {audio_res.get('mean_rms', 0.0):.4f}
+
+3. REASONING & DIAGNOSTIC LOG:
+{trust_res.get('reasoning', '')}
+
+=== END OF AUDIT RECORD ===
+"""
+        st.download_button(
+            "📋 Download Full Forensic Audit Certificate (.txt)",
+            data=report_txt,
+            file_name=f"DeepShield_Forensic_Audit_{audit_hash}.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
 
     # TAB 2: VISUAL CNN ANALYSIS
     with tab_visual:
         st.markdown("### 👁️ EfficientNet-B0 Frame Decomposition")
-        st.markdown(f"<div style='font-size: 0.8rem; font-family: monospace; color: #94a3b8; margin-bottom: 10px;'>UNIFORMLY EXTRACTED INSPECTION FRAMES ({len(frames)} SAMPLES):</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size: 0.8rem; font-family: monospace; color: #94a3b8; margin-bottom: 10px;'>UNIFORMLY EXTRACTED INSPECTION FRAMES ({len(frames)} SAMPLES) WITH PREDICTION HIGHLIGHTS:</div>", unsafe_allow_html=True)
 
+        frame_preds = vis_res.get("frame_results", [])
         cols = st.columns(min(8, max(1, len(frames))))
         for idx, (f_idx, img) in enumerate(frames[:8]):
             with cols[idx]:
                 t_sec = timestamps[idx] if idx < len(timestamps) else 0.0
-                st.markdown(f"<div class='filmstrip-card'><span style='font-size: 0.7rem; font-family: monospace; color: #38bdf8;'>F#{f_idx} ({t_sec:.1f}s)</span></div>", unsafe_allow_html=True)
+                f_pred = frame_preds[idx] if idx < len(frame_preds) else {}
+                p_real_f = f_pred.get("prob_real", 0.5)
+                is_real_f = p_real_f >= 0.5
+                card_style = "real-frame" if is_real_f else "fake-frame"
+                tag_color = "#34d399" if is_real_f else "#ef4444"
+                tag_label = f"{round(p_real_f*100)}% R" if is_real_f else f"{round((1-p_real_f)*100)}% F"
+                
+                st.markdown(f"<div class='filmstrip-card {card_style}'><span style='font-size: 0.7rem; font-family: monospace; color: {tag_color}; font-weight: 700;'>F#{f_idx} • {tag_label}</span></div>", unsafe_allow_html=True)
                 st.image(img, use_container_width=True)
 
         if len(frames) > 8:
@@ -464,7 +723,14 @@ def render_multimodal_forensic_results(trust_res, vis_res, audio_res, sync_res, 
                 with cols2[idx]:
                     actual_idx = idx + 8
                     t_sec = timestamps[actual_idx] if actual_idx < len(timestamps) else 0.0
-                    st.markdown(f"<div class='filmstrip-card'><span style='font-size: 0.7rem; font-family: monospace; color: #38bdf8;'>F#{f_idx} ({t_sec:.1f}s)</span></div>", unsafe_allow_html=True)
+                    f_pred = frame_preds[actual_idx] if actual_idx < len(frame_preds) else {}
+                    p_real_f = f_pred.get("prob_real", 0.5)
+                    is_real_f = p_real_f >= 0.5
+                    card_style = "real-frame" if is_real_f else "fake-frame"
+                    tag_color = "#34d399" if is_real_f else "#ef4444"
+                    tag_label = f"{round(p_real_f*100)}% R" if is_real_f else f"{round((1-p_real_f)*100)}% F"
+
+                    st.markdown(f"<div class='filmstrip-card {card_style}'><span style='font-size: 0.7rem; font-family: monospace; color: {tag_color}; font-weight: 700;'>F#{f_idx} • {tag_label}</span></div>", unsafe_allow_html=True)
                     st.image(img, use_container_width=True)
 
         st.divider()
@@ -688,32 +954,51 @@ elif selected_page == "🎬 Multimodal Forensic Lab":
                     st.markdown("<span class='badge badge-amber'>⚠️ Full Frame Analyzed (No Face Bounding Box)</span>", unsafe_allow_html=True)
 
             with col_pred:
-                st.markdown("<div style='font-size: 0.85rem; font-family: monospace; color: #38bdf8; margin-bottom: 6px;'>SPATIAL INFERENCE VERDICT</div>", unsafe_allow_html=True)
+                st.markdown("<div style='font-size: 0.85rem; font-family: monospace; color: #38bdf8; margin-bottom: 6px;'>EXACT BIOMETRIC SNAPSHOT VERDICT</div>", unsafe_allow_html=True)
 
                 inf = proc_res.get("inference")
                 if inf and inf.get("status") == "success":
-                    p_real = inf["mean_real_prob"]
-                    p_fake = inf["mean_fake_prob"]
+                    p_real = float(inf["mean_real_prob"])
+                    p_fake = float(inf["mean_fake_prob"])
                     pred_label = inf["overall_prediction"]
+                    conf = float(inf.get("overall_confidence", max(p_real, p_fake)))
 
                     is_real = pred_label == "REAL"
                     gauge_color = "#10b981" if is_real else "#ef4444"
                     badge_style = "badge-green" if is_real else "badge-rose"
-                    verdict_text = "AUTHENTIC HUMAN FACE" if is_real else "SYNTHETIC DEEPFAKE DETECTED"
+                    verdict_text = "AUTHENTIC HUMAN BIOMETRIC TARGET" if is_real else "SYNTHETIC FACIAL DEEPFAKE DETECTED"
+                    verdict_banner_class = "emerald" if is_real else "rose"
+
+                    # Snapshot Mini Verdict Banner
+                    st.markdown(f"""
+                    <div class="verdict-banner {verdict_banner_class}" style="padding: 16px; margin: 0 0 14px 0;">
+                        <div style="font-size: 0.72rem; font-family: monospace; color: #38bdf8; text-transform: uppercase;">
+                            LIVE CAMERA FACIAL INSPECTION
+                        </div>
+                        <div style="font-size: 1.25rem; font-weight: 800; color: #ffffff; margin-top: 2px;">
+                            {'🛡️' if is_real else '🚨'} {verdict_text}
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <span class="badge {badge_style}">CONFIDENCE: {conf:.1f}%</span>
+                            <span class="badge badge-cyan">{round(snap_latency*1000)}ms LATENCY</span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
                     fig_snap_gauge = go.Figure(go.Indicator(
                         mode="gauge+number",
                         value=p_real,
                         domain={'x': [0, 1], 'y': [0, 1]},
-                        number={'suffix': "%", 'font': {'size': 36, 'color': '#f8fafc'}},
+                        title={'text': "AUTHENTICITY SCORE (PROB REAL)", 'font': {'size': 13, 'color': '#94a3b8', 'family': 'JetBrains Mono'}},
+                        number={'suffix': "%", 'font': {'size': 34, 'color': '#f8fafc', 'family': 'Plus Jakarta Sans'}},
                         gauge={
                             'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "#475569"},
-                            'bar': {'color': gauge_color, 'thickness': 0.28},
+                            'bar': {'color': gauge_color, 'thickness': 0.3},
                             'bgcolor': "rgba(15, 23, 42, 0.4)",
                             'borderwidth': 0,
                             'steps': [
-                                {'range': [0, 50], 'color': 'rgba(239, 68, 68, 0.15)'},
-                                {'range': [50, 100], 'color': 'rgba(16, 185, 129, 0.15)'}
+                                {'range': [0, 50], 'color': 'rgba(239, 68, 68, 0.2)'},
+                                {'range': [50, 100], 'color': 'rgba(16, 185, 129, 0.2)'}
                             ],
                             'threshold': {
                                 'line': {'color': "#ffffff", 'width': 3},
@@ -726,36 +1011,26 @@ elif selected_page == "🎬 Multimodal Forensic Lab":
                         template="plotly_dark",
                         paper_bgcolor="rgba(0,0,0,0)",
                         plot_bgcolor="rgba(0,0,0,0)",
-                        height=200,
-                        margin=dict(l=10, r=10, t=20, b=10)
+                        height=180,
+                        margin=dict(l=10, r=10, t=25, b=10)
                     )
                     st.plotly_chart(fig_snap_gauge, use_container_width=True)
 
                     st.markdown(f"""
-                    <div style="text-align: center; margin-bottom: 12px;">
-                        <span class="badge {badge_style}" style="font-size: 0.9rem; padding: 6px 16px;">{verdict_text}</span>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                    st.markdown(f"""
                     <div class="glass-card" style="padding: 14px;">
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                            <div>
-                                <div class="hud-metric-title">PROB REAL</div>
-                                <div style="font-size: 1.2rem; font-weight: 700; color: #10b981;">{p_real}%</div>
+                            <div class="kpi-card" style="padding: 10px;">
+                                <div class="hud-metric-title">EXACT REAL PROB</div>
+                                <div style="font-size: 1.4rem; font-weight: 800; color: #10b981;">{p_real:.2f}%</div>
                             </div>
-                            <div>
-                                <div class="hud-metric-title">PROB FAKE</div>
-                                <div style="font-size: 1.2rem; font-weight: 700; color: #ef4444;">{p_fake}%</div>
+                            <div class="kpi-card" style="padding: 10px;">
+                                <div class="hud-metric-title">EXACT FAKE PROB</div>
+                                <div style="font-size: 1.4rem; font-weight: 800; color: #ef4444;">{p_fake:.2f}%</div>
                             </div>
-                            <div>
-                                <div class="hud-metric-title">LATENCY</div>
-                                <div style="font-size: 1.1rem; font-weight: 600; color: #38bdf8;">{snap_latency}s</div>
-                            </div>
-                            <div>
-                                <div class="hud-metric-title">MODEL</div>
-                                <div style="font-size: 0.95rem; font-weight: 600; color: #cbd5e1;">EfficientNet-B0</div>
-                            </div>
+                        </div>
+                        <div style="margin-top: 10px; font-size: 0.78rem; font-family: monospace; color: #94a3b8; display: flex; justify-content: space-between;">
+                            <span>MODEL: EfficientNet-B0</span>
+                            <span>BACKEND: PyTorch ({vis_detector_dev := str(visual_detector.device).upper()})</span>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
@@ -836,5 +1111,22 @@ elif selected_page == "🎬 Multimodal Forensic Lab":
                     vis_res = visual_detector.predict_frames(frames)
                     trust_res = trust_engine.evaluate(vis_res, audio_res, sync_res)
                     exec_latency = round(time.time() - t_start, 3)
-                    render_multimodal_forensic_results(trust_res, vis_res, audio_res, sync_res, frames, timestamps, exec_latency)
+                    st.session_state["active_forensic_report"] = {
+                        "trust_res": trust_res,
+                        "vis_res": vis_res,
+                        "audio_res": audio_res,
+                        "sync_res": sync_res,
+                        "frames": frames,
+                        "timestamps": timestamps,
+                        "exec_latency": exec_latency,
+                        "video_path": video_path
+                    }
+
+        if "active_forensic_report" in st.session_state and st.session_state["active_forensic_report"].get("video_path") == video_path:
+            rep = st.session_state["active_forensic_report"]
+            render_multimodal_forensic_results(
+                rep["trust_res"], rep["vis_res"], rep["audio_res"], rep["sync_res"],
+                rep["frames"], rep["timestamps"], rep["exec_latency"],
+                trust_engine_instance=trust_engine
+            )
 
