@@ -828,10 +828,13 @@ elif selected_page == "🎬 Multimodal Forensic Lab":
             with st.spinner("Executing spatial CNN inference, extracting audio features, and calculating lip synchronization..."):
                 t_start = time.time()
                 frames, timestamps = visual_detector.sample_frames(video_path, num_samples=16)
-                audio_res = audio_analyzer.analyze_audio(video_path)
-                sync_res = sync_analyzer.analyze_synchronization(audio_res, video_path)
-                vis_res = visual_detector.predict_frames(frames)
-                trust_res = trust_engine.evaluate(vis_res, audio_res, sync_res)
-                exec_latency = round(time.time() - t_start, 3)
+                if not frames or len(frames) == 0:
+                    st.error("⚠️ Unable to decode visual frames from the video container. Please record a slightly longer clip (3–5 seconds) with your camera.")
+                else:
+                    audio_res = audio_analyzer.analyze_audio(video_path)
+                    sync_res = sync_analyzer.analyze_synchronization(audio_res, video_path)
+                    vis_res = visual_detector.predict_frames(frames)
+                    trust_res = trust_engine.evaluate(vis_res, audio_res, sync_res)
+                    exec_latency = round(time.time() - t_start, 3)
+                    render_multimodal_forensic_results(trust_res, vis_res, audio_res, sync_res, frames, timestamps, exec_latency)
 
-            render_multimodal_forensic_results(trust_res, vis_res, audio_res, sync_res, frames, timestamps, exec_latency)

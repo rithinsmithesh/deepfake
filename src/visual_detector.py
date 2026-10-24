@@ -120,35 +120,55 @@ class DeepShieldVisualDetector:
 
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         fps = float(cap.get(cv2.CAP_PROP_FPS))
-        if total_frames <= 0:
+        if fps <= 0:
+            fps = 30.0
+
+        # Fast path: If header reports total_frames > 0, sample directly
+        if total_frames > 0:
+            actual_samples = min(num_samples, total_frames)
+            sample_indices = np.linspace(0, total_frames - 1, actual_samples, dtype=int)
+            target_idx_set = set(sample_indices)
+            frames = []
+            timestamps = []
+            current_idx = 0
+            while cap.isOpened() and len(frames) < actual_samples:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                if current_idx in target_idx_set:
+                    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    pil_img = Image.fromarray(rgb_frame)
+                    timestamp = current_idx / fps
+                    frames.append((current_idx, pil_img))
+                    timestamps.append(timestamp)
+                current_idx += 1
             cap.release()
-            return [], []
+            if len(frames) > 0:
+                return frames, timestamps
 
-        num_samples = min(num_samples, total_frames)
-        sample_indices = np.linspace(0, total_frames - 1, num_samples, dtype=int)
-
-        frames = []
-        timestamps = []
-
-        current_idx = 0
-        target_idx_set = set(sample_indices)
-
-        while cap.isOpened() and len(frames) < num_samples:
+        # Resilient path for dynamic/live streams: read sequentially until EOF
+        all_frames = []
+        all_times = []
+        idx = 0
+        cap = cv2.VideoCapture(video_path)
+        while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
-
-            if current_idx in target_idx_set:
-                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                pil_img = Image.fromarray(rgb_frame)
-                timestamp = current_idx / fps if fps > 0 else 0.0
-                frames.append((current_idx, pil_img))
-                timestamps.append(timestamp)
-
-            current_idx += 1
-
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            all_frames.append((idx, Image.fromarray(rgb)))
+            all_times.append(idx / fps)
+            idx += 1
         cap.release()
-        return frames, timestamps
+
+        if len(all_frames) == 0:
+            return [], []
+
+        if len(all_frames) <= num_samples:
+            return all_frames, all_times
+
+        sample_idx = np.linspace(0, len(all_frames) - 1, num_samples, dtype=int)
+        return [all_frames[i] for i in sample_idx], [all_times[i] for i in sample_idx]
 
     def predict_frames(self, pil_frames):
         """
@@ -163,6 +183,21 @@ class DeepShieldVisualDetector:
                     "In accordance with rigorous scientific integrity, simulated predictions are not generated. "
                     "Place your trained checkpoint in models/ or upload it via the settings."
                 ),
+                "device": str(self.device),
+                "benchmarks": VERIFIED_BENCHMARKS
+            }
+
+        if not pil_frames or len(pil_frames) == 0:
+            return {
+                "status": "error",
+                "message": "No decodable frames were found in the video stream.",
+                "overall_prediction": "INCONCLUSIVE",
+                "overall_confidence": 0.0,
+                "mean_fake_prob": 50.0,
+                "mean_real_prob": 50.0,
+                "frame_results": [],
+                "inference_time_sec": 0.0,
+                "frames_analyzed": 0,
                 "device": str(self.device),
                 "benchmarks": VERIFIED_BENCHMARKS
             }

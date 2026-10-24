@@ -75,12 +75,11 @@ class DeepShieldSyncAnalyzer:
         fps = cap.get(cv2.CAP_PROP_FPS)
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-        if fps <= 0 or total_frames <= 0:
-            cap.release()
-            return None, None, "Invalid video stream (FPS or frame count is zero)."
+        if fps <= 0:
+            fps = 30.0
 
         # Determine frame stride if video is very long
-        stride = max(1, total_frames // max_frames)
+        stride = max(1, total_frames // max_frames) if total_frames > 0 else 1
 
         mouth_signal = []
         frame_times = []

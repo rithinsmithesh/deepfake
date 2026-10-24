@@ -47,9 +47,11 @@ def render_live_webcam_recorder(key="deepshield_live_recorder"):
     if not b64_str:
         return None
 
-    # Strip Data URL header if present (e.g. "data:video/webm;base64,...")
-    if "," in b64_str:
-        b64_str = b64_str.split(",", 1)[1]
+    # Strip Data URL header if present (e.g. "data:video/webm;codecs=vp8,opus;base64,...")
+    if ";base64," in b64_str:
+        b64_str = b64_str.split(";base64,", 1)[1]
+    elif "," in b64_str:
+        b64_str = b64_str.rsplit(",", 1)[1]
 
     try:
         raw_bytes = base64.b64decode(b64_str)
