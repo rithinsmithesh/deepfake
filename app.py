@@ -559,7 +559,6 @@ with st.sidebar:
         "NAVIGATION",
         [
             "🏠 Dashboard & Mission",
-            "📹 Live Camera & Call Lab",
             "🎬 Multimodal Forensic Lab"
         ],
         label_visibility="collapsed"
@@ -593,6 +592,13 @@ if selected_page == "🏠 Dashboard & Mission":
     </div>
     """, unsafe_allow_html=True)
 
+    st.markdown("### ⚡ Quick Launch Checklist")
+    st.markdown("""
+    1. Select **🎬 Multimodal Forensic Lab** in the left navigation.
+    2. The **Live Camera & Video Call Recorder** is immediately active on the first tab! Turn on your camera, record a live sample or take an instant snapshot, or upload a video file.
+    3. Click **Execute Forensic Analysis** to inspect frame predictions, audio acoustics, and temporal sync curves!
+    """)
+
     st.markdown("### ⚡ Operational Workflows")
     col_w1, col_w2 = st.columns(2)
 
@@ -600,7 +606,7 @@ if selected_page == "🏠 Dashboard & Mission":
         st.markdown("""
         <div class="glass-card">
             <div style="font-size: 1.2rem; font-weight: 700; color: #38bdf8; margin-bottom: 8px;">
-                📹 Live Camera & Call Operation (New)
+                📹 Live Camera & Call Operation (Featured)
             </div>
             <p style="color: #94a3b8; font-size: 0.9rem; line-height: 1.5;">
                 Test real-time video call feeds directly via your webcam & microphone:
@@ -608,7 +614,6 @@ if selected_page == "🏠 Dashboard & Mission":
             <ul style="color: #cbd5e1; font-size: 0.88rem; line-height: 1.6; padding-left: 20px;">
                 <li><strong>Live Video Call Recorder:</strong> Capture 5–12s live speech clips for full multimodal analysis.</li>
                 <li><strong>Instant Facial Biometric Scanner:</strong> Snap a webcam frame to isolate 478 MediaPipe facial landmarks and evaluate spatial deepfake probability.</li>
-                <li><strong>Live Voice Call Analyzer:</strong> Inspect live microphone acoustic signatures and MFCC spectrum.</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -632,15 +637,15 @@ if selected_page == "🏠 Dashboard & Mission":
 
 
 # ---------------------------------------------------------
-# PAGE 2: LIVE CAMERA & CALL LAB (NEW FEATURE)
+# PAGE 2: MULTIMODAL FORENSIC LAB (FEATURING LIVE CAMERA FIRST)
 # ---------------------------------------------------------
-elif selected_page == "📹 Live Camera & Call Lab":
+elif selected_page == "🎬 Multimodal Forensic Lab":
     st.markdown("""
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px;">
         <div>
-            <h2 style="margin: 0; font-size: 2rem; color: #f8fafc;">📹 Live Camera & Video Call Lab</h2>
+            <h2 style="margin: 0; font-size: 2rem; color: #f8fafc;">🎬 Multimodal Forensic Lab</h2>
             <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 0.95rem;">
-                Real-time webcam inspection and live call deepfake recognition engine.
+                Run live camera deepfake recognition, spatial CNN inference, physical acoustics, and audio-lip synchronization.
             </p>
         </div>
         <div>
@@ -649,25 +654,25 @@ elif selected_page == "📹 Live Camera & Call Lab":
     </div>
     """, unsafe_allow_html=True)
 
-    cam_tab1, cam_tab2, cam_tab3, cam_tab4 = st.tabs([
-        "🎥 LIVE VIDEO CALL RECORDER (MULTIMODAL)",
-        "📸 INSTANT WEBCAM FACIAL SCANNER",
-        "🎙️ LIVE VOICE CALL ANALYZER",
-        "🔴 HARDWARE CAMERA PROBE"
+    # 3 Visible Main Tabs with Camera FRONT AND CENTER
+    tab_live_cam, tab_live_snap, tab_preset_file = st.tabs([
+        "📹 LIVE CAMERA & VIDEO CALL RECORDER",
+        "📸 LIVE CAMERA SNAPSHOT SCANNER",
+        "📁 FILE UPLOAD & PRESET DEMO LIBRARY"
     ])
 
     # -----------------------------------------------------
-    # TAB 1: LIVE VIDEO CALL RECORDER (VIDEO + AUDIO)
+    # TAB 1: LIVE VIDEO CALL RECORDER (MULTIMODAL VIDEO + AUDIO)
     # -----------------------------------------------------
-    with cam_tab1:
+    with tab_live_cam:
         st.markdown("""
         <div style="margin-bottom: 12px; font-size: 0.92rem; color: #cbd5e1;">
-            Record a live video and voice sample directly from your webcam & microphone (simulating a video call).
-            The captured stream will be evaluated through our spatial CNN, acoustic spectrogram, and biometric lip-sync engine.
+            <strong>📹 Live Video Call Simulation:</strong> Record a live video and voice sample directly from your webcam & microphone.
+            DeepShield will decompose your live stream into spatial video frames, physical speech acoustics, and biometric lip synchronization.
         </div>
         """, unsafe_allow_html=True)
 
-        rec_result = render_live_webcam_recorder(key="live_call_recorder_main")
+        rec_result = render_live_webcam_recorder(key="lab_live_call_recorder")
 
         if rec_result and rec_result.get("video_path") and os.path.exists(rec_result["video_path"]):
             live_vid = rec_result["video_path"]
@@ -708,7 +713,7 @@ elif selected_page == "📹 Live Camera & Call Lab":
                     """, unsafe_allow_html=True)
 
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🚀 EXECUTE MULTIMODAL FORENSIC ANALYSIS ON LIVE CALL", key="btn_run_live_call", use_container_width=True):
+            if st.button("🚀 EXECUTE MULTIMODAL FORENSIC ANALYSIS ON LIVE CALL", key="btn_run_lab_live_call", use_container_width=True):
                 with st.spinner("Decomposing live call stream: sampling frames, extracting acoustics, tracking 478 face landmarks..."):
                     t_start = time.time()
                     frames, timestamps = visual_detector.sample_frames(live_vid, num_samples=16)
@@ -721,17 +726,17 @@ elif selected_page == "📹 Live Camera & Call Lab":
                 render_multimodal_forensic_results(trust_res, vis_res, audio_res, sync_res, frames, timestamps, exec_latency)
 
     # -----------------------------------------------------
-    # TAB 2: INSTANT WEBCAM FACIAL SCANNER (SPATIAL CNN)
+    # TAB 2: LIVE CAMERA SNAPSHOT SCANNER (SPATIAL CNN)
     # -----------------------------------------------------
-    with cam_tab2:
+    with tab_live_snap:
         st.markdown("""
         <div style="margin-bottom: 12px; font-size: 0.92rem; color: #cbd5e1;">
-            Point your webcam at your face and capture an instant live snapshot.
-            MediaPipe tracks <strong>478 biometric landmarks</strong> and isolates the facial ROI for high-speed spatial deepfake detection via <strong>EfficientNet-B0</strong>.
+            <strong>📸 Instant Webcam Facial Inspection:</strong> Point your camera at your face and capture an instant live snapshot.
+            MediaPipe locks onto <strong>478 biometric landmarks</strong> and isolates your facial ROI for spatial deepfake classification via <strong>EfficientNet-B0</strong>.
         </div>
         """, unsafe_allow_html=True)
 
-        snap = st.camera_input("Point camera at face and capture snapshot", key="live_snap_camera")
+        snap = st.camera_input("Point camera at face and capture snapshot", key="lab_live_snapshot_cam")
 
         if snap is not None:
             with st.spinner("Locking biometric target & evaluating spatial convolutional features..."):
@@ -835,218 +840,92 @@ elif selected_page == "📹 Live Camera & Call Lab":
                     st.warning("Spatial checkpoint is awaiting load.")
 
     # -----------------------------------------------------
-    # TAB 3: LIVE VOICE CALL ANALYZER (AUDIO MICROPHONE)
+    # TAB 3: FILE UPLOAD & PRESET DEMO LIBRARY
     # -----------------------------------------------------
-    with cam_tab3:
-        st.markdown("""
-        <div style="margin-bottom: 12px; font-size: 0.92rem; color: #cbd5e1;">
-            Record live speech from your microphone to inspect physical acoustic signatures, Mel-Frequency Cepstral Coefficients (MFCC), and voice continuity markers.
-        </div>
-        """, unsafe_allow_html=True)
+    with tab_preset_file:
+        st.markdown("<div style='font-size: 0.8rem; font-family: monospace; color: #94a3b8; margin-bottom: 6px;'>CHOOSE TEST VIDEO:</div>", unsafe_allow_html=True)
 
-        audio_input_bytes = st.audio_input("Record live speech from microphone", key="live_mic_audio")
+        preset_options = [
+            "👤 Your Real Video (Library Test — 7.99s)",
+            "🎬 Synthetic Demo 1 (Synchronized Speech)",
+            "⚠️ Synthetic Demo 2 (Out-of-Phase / Desynced)",
+            "🔇 Synthetic Demo 3 (Stripped Audio / Muted)",
+            "📤 Upload Custom File"
+        ]
+        selected_preset = st.selectbox("Preset Selector", preset_options, label_visibility="collapsed")
 
-        if audio_input_bytes is not None:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as t_audio:
-                t_audio.write(audio_input_bytes.getvalue())
-                audio_tmp_path = t_audio.name
+        video_path = None
+        video_title = ""
 
-            with st.spinner("Extracting 16kHz speech waveform & computing MFCC acoustic spectrum..."):
-                a_res = audio_analyzer.analyze_audio(audio_tmp_path)
+        if "Your Real Video" in selected_preset:
+            video_path = "assets/samples/DeepShield_Test_Video_With_Audio (5).mp4"
+            video_title = "DeepShield_User_Talking_Sample.mp4"
+        elif "Demo 1" in selected_preset:
+            video_path = "assets/samples/sample_talking_face.mp4"
+            video_title = "Synthetic_Face_Synced.mp4"
+        elif "Demo 2" in selected_preset:
+            video_path = "assets/samples/sample_desync_face.mp4"
+            video_title = "Synthetic_Face_Desync.mp4"
+        elif "Demo 3" in selected_preset:
+            video_path = "assets/samples/sample_no_audio.mp4"
+            video_title = "Muted_Video_No_Audio.mp4"
+        else:
+            uploaded_file = st.file_uploader(
+                "Drag & Drop Video File (MP4, MOV, AVI, WEBM)",
+                type=["mp4", "mov", "avi", "webm"]
+            )
+            if uploaded_file is not None:
+                tfile = tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1])
+                tfile.write(uploaded_file.getbuffer())
+                tfile.close()
+                video_path = tfile.name
+                video_title = uploaded_file.name
+                st.success(f"✓ Staged: `{uploaded_file.name}` ({round(len(uploaded_file.getbuffer())/1024, 1)} KB)")
 
-            if a_res.get("has_audio"):
-                st.markdown("<br>", unsafe_allow_html=True)
-                col_a1, col_a2 = st.columns([1, 1.2])
+        if video_path and os.path.exists(video_path):
+            st.markdown("<br>", unsafe_allow_html=True)
+            col_player, col_telemetry = st.columns([1.1, 1])
 
-                with col_a1:
-                    st.markdown("<div style='font-size: 0.85rem; font-family: monospace; color: #38bdf8; margin-bottom: 6px;'>AUDIO PLAYBACK</div>", unsafe_allow_html=True)
-                    st.audio(audio_tmp_path)
+            with col_player:
+                st.markdown(f"<div style='font-size: 0.85rem; font-family: monospace; color: #38bdf8; margin-bottom: 6px;'>SOURCE PREVIEW: {video_title}</div>", unsafe_allow_html=True)
+                st.video(video_path)
 
+            with col_telemetry:
+                meta = visual_detector.extract_video_metadata(video_path)
+                st.markdown("<div style='font-size: 0.85rem; font-family: monospace; color: #38bdf8; margin-bottom: 6px;'>CONTAINER TELEMETRY</div>", unsafe_allow_html=True)
+                if meta:
                     st.markdown(f"""
-                    <div class="glass-card" style="margin-top: 12px; padding: 14px;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="glass-card" style="padding: 16px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
                             <div>
-                                <div class="hud-metric-title">SPEECH RATIO</div>
-                                <div style="font-size: 1.3rem; font-weight: 700; color: #34d399;">{a_res['speech_ratio']}%</div>
+                                <div class="hud-metric-title">RESOLUTION</div>
+                                <div style="font-size: 1.3rem; font-weight: 700; color: #f8fafc;">{meta['width']} × {meta['height']} px</div>
                             </div>
                             <div>
-                                <div class="hud-metric-title">MEAN RMS</div>
-                                <div style="font-size: 1.3rem; font-weight: 700; color: #38bdf8;">{a_res['mean_rms']:.4f}</div>
+                                <div class="hud-metric-title">FRAME RATE</div>
+                                <div style="font-size: 1.3rem; font-weight: 700; color: #38bdf8;">{meta['fps']} FPS</div>
+                            </div>
+                            <div>
+                                <div class="hud-metric-title">TOTAL FRAMES</div>
+                                <div style="font-size: 1.3rem; font-weight: 700; color: #f8fafc;">{meta['frame_count']} frames</div>
                             </div>
                             <div>
                                 <div class="hud-metric-title">DURATION</div>
-                                <div style="font-size: 1.1rem; font-weight: 600; color: #f8fafc;">{a_res['duration']:.2f}s</div>
-                            </div>
-                            <div>
-                                <div class="hud-metric-title">SAMPLE RATE</div>
-                                <div style="font-size: 1.1rem; font-weight: 600; color: #c084fc;">16,000 Hz</div>
+                                <div style="font-size: 1.3rem; font-weight: 700; color: #34d399;">{meta['duration']}s</div>
                             </div>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
 
-                with col_a2:
-                    st.markdown("<div class='hud-metric-title'>13-BAND MEL-FREQUENCY CEPSTRAL COEFFICIENTS (MFCC)</div>", unsafe_allow_html=True)
-                    fig_m_live = px.imshow(a_res["mfcc"], aspect="auto", color_continuous_scale="Viridis", labels=dict(x="Time Frame (512 hop)", y="MFCC Index", color="dB"))
-                    fig_m_live.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(15, 23, 42, 0.4)", height=220, margin=dict(l=20, r=20, t=10, b=20))
-                    st.plotly_chart(fig_m_live, use_container_width=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🚀 EXECUTE MULTIMODAL FORENSIC ANALYSIS", key="btn_run_file_analysis", use_container_width=True):
+                with st.spinner("Executing spatial CNN inference, extracting audio features, and calculating lip synchronization..."):
+                    t_start = time.time()
+                    frames, timestamps = visual_detector.sample_frames(video_path, num_samples=16)
+                    audio_res = audio_analyzer.analyze_audio(video_path)
+                    sync_res = sync_analyzer.analyze_synchronization(audio_res, video_path)
+                    vis_res = visual_detector.predict_frames(frames)
+                    trust_res = trust_engine.evaluate(vis_res, audio_res, sync_res)
+                    exec_latency = round(time.time() - t_start, 3)
 
-                # Waveform
-                st.markdown("<div class='hud-metric-title'>NORMALIZED AMPLITUDE WAVEFORM</div>", unsafe_allow_html=True)
-                df_w_live = pd.DataFrame({"Time (s)": a_res["waveform_times"], "Amplitude": a_res["waveform"]})
-                fig_w_live = px.line(df_w_live, x="Time (s)", y="Amplitude", color_discrete_sequence=["#38bdf8"])
-                fig_w_live.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(15, 23, 42, 0.4)", height=200, margin=dict(l=30, r=20, t=10, b=30))
-                st.plotly_chart(fig_w_live, use_container_width=True)
-            else:
-                st.warning("Unable to extract valid speech tracks from recording.")
-
-    # -----------------------------------------------------
-    # TAB 4: HARDWARE CAMERA PROBE (LOCAL & CLOUD)
-    # -----------------------------------------------------
-    with cam_tab4:
-        st.markdown("""
-        <div style="margin-bottom: 14px; font-size: 0.92rem; color: #cbd5e1;">
-            DeepShield hardware probe checks for local OpenCV camera devices and explains cloud container vs. client browser capture.
-        </div>
-        """, unsafe_allow_html=True)
-
-        local_cams = LiveCameraProcessor.probe_local_cameras()
-
-        if local_cams:
-            st.success(f"✓ Found {len(local_cams)} local hardware camera device(s) on host system.")
-            for c in local_cams:
-                st.markdown(f"""
-                <div class="glass-card" style="padding: 12px; margin-bottom: 8px;">
-                    <div style="font-size: 0.95rem; font-weight: 700; color: #38bdf8;">Camera Device Index #{c['index']}</div>
-                    <div style="font-size: 0.85rem; color: #94a3b8; font-family: monospace;">Resolution: {c['width']}×{c['height']} px | Native FPS: {c['fps']}</div>
-                </div>
-                """, unsafe_allow_html=True)
-        else:
-            st.markdown("""
-            <div class="glass-card" style="border-left: 3px solid #38bdf8;">
-                <div style="font-size: 1.05rem; font-weight: 700; color: #f8fafc;">
-                    🌐 Cloud Container Mode Active
-                </div>
-                <p style="color: #94a3b8; font-size: 0.9rem; margin-top: 6px; line-height: 1.5;">
-                    When hosted on cloud containers (such as <code>deepfakeaudio.streamlit.app</code>) or in sandboxed environments, 
-                    the host server does not have direct physical <code>/dev/video*</code> camera hardware attached.
-                </p>
-                <p style="color: #cbd5e1; font-size: 0.88rem; margin-top: 4px; line-height: 1.5;">
-                    DeepShield seamlessly handles this via <strong>Tab 1 (Browser Live Video Recorder)</strong> and <strong>Tab 2 (Webcam Snapshot Scanner)</strong>, 
-                    which interface directly with your client device's camera hardware over HTTPS without requiring server-side video devices!
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
-
-
-# ---------------------------------------------------------
-# PAGE 3: MULTIMODAL FORENSIC LAB (FILE & LIVE SELECTION)
-# ---------------------------------------------------------
-elif selected_page == "🎬 Multimodal Forensic Lab":
-    st.markdown("""
-    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px;">
-        <div>
-            <h2 style="margin: 0; font-size: 2rem; color: #f8fafc;">🎬 Multimodal Forensic Lab</h2>
-            <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 0.95rem;">
-                Run deep visual feature decomposition, speech acoustic profiling, and temporal lip synchronization.
-            </p>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Clean Segmented Preset Selector
-    st.markdown("<div style='font-size: 0.8rem; font-family: monospace; color: #94a3b8; margin-bottom: 6px;'>CHOOSE TEST VIDEO:</div>", unsafe_allow_html=True)
-
-    preset_options = [
-        "👤 Your Real Video (Library Test — 7.99s)",
-        "🎬 Synthetic Demo 1 (Synchronized Speech)",
-        "⚠️ Synthetic Demo 2 (Out-of-Phase / Desynced)",
-        "🔇 Synthetic Demo 3 (Stripped Audio / Muted)",
-        "📹 Live Camera & Call Feed",
-        "📤 Upload Custom File"
-    ]
-    selected_preset = st.selectbox("Preset Selector", preset_options, label_visibility="collapsed")
-
-    video_path = None
-    video_title = ""
-
-    if "Your Real Video" in selected_preset:
-        video_path = "assets/samples/DeepShield_Test_Video_With_Audio (5).mp4"
-        video_title = "DeepShield_User_Talking_Sample.mp4"
-    elif "Demo 1" in selected_preset:
-        video_path = "assets/samples/sample_talking_face.mp4"
-        video_title = "Synthetic_Face_Synced.mp4"
-    elif "Demo 2" in selected_preset:
-        video_path = "assets/samples/sample_desync_face.mp4"
-        video_title = "Synthetic_Face_Desync.mp4"
-    elif "Demo 3" in selected_preset:
-        video_path = "assets/samples/sample_no_audio.mp4"
-        video_title = "Muted_Video_No_Audio.mp4"
-    elif "Live Camera" in selected_preset:
-        st.markdown("<br>", unsafe_allow_html=True)
-        rec_data = render_live_webcam_recorder(key="lab_embedded_recorder")
-        if rec_data and rec_data.get("video_path") and os.path.exists(rec_data["video_path"]):
-            video_path = rec_data["video_path"]
-            video_title = f"Live_Call_Recording_{int(time.time())}.mp4"
-            st.success(f"✓ Live Call Captured ({rec_data.get('duration', 0.0):.1f}s, {round(rec_data['raw_size']/1024, 1)} KB). Ready for analysis!")
-    else:
-        uploaded_file = st.file_uploader(
-            "Drag & Drop Video File (MP4, MOV, AVI, WEBM)",
-            type=["mp4", "mov", "avi", "webm"]
-        )
-        if uploaded_file is not None:
-            tfile = tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1])
-            tfile.write(uploaded_file.getbuffer())
-            tfile.close()
-            video_path = tfile.name
-            video_title = uploaded_file.name
-            st.success(f"✓ Staged: `{uploaded_file.name}` ({round(len(uploaded_file.getbuffer())/1024, 1)} KB)")
-
-    if video_path and os.path.exists(video_path):
-        # Video Player & Telemetry Cards
-        st.markdown("<br>", unsafe_allow_html=True)
-        col_player, col_telemetry = st.columns([1.1, 1])
-
-        with col_player:
-            st.markdown(f"<div style='font-size: 0.85rem; font-family: monospace; color: #38bdf8; margin-bottom: 6px;'>SOURCE PREVIEW: {video_title}</div>", unsafe_allow_html=True)
-            st.video(video_path)
-
-        with col_telemetry:
-            meta = visual_detector.extract_video_metadata(video_path)
-            st.markdown("<div style='font-size: 0.85rem; font-family: monospace; color: #38bdf8; margin-bottom: 6px;'>CONTAINER TELEMETRY</div>", unsafe_allow_html=True)
-            if meta:
-                st.markdown(f"""
-                <div class="glass-card" style="padding: 16px;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-                        <div>
-                            <div class="hud-metric-title">RESOLUTION</div>
-                            <div style="font-size: 1.3rem; font-weight: 700; color: #f8fafc;">{meta['width']} × {meta['height']} px</div>
-                        </div>
-                        <div>
-                            <div class="hud-metric-title">FRAME RATE</div>
-                            <div style="font-size: 1.3rem; font-weight: 700; color: #38bdf8;">{meta['fps']} FPS</div>
-                        </div>
-                        <div>
-                            <div class="hud-metric-title">TOTAL FRAMES</div>
-                            <div style="font-size: 1.3rem; font-weight: 700; color: #f8fafc;">{meta['frame_count']} frames</div>
-                        </div>
-                        <div>
-                            <div class="hud-metric-title">DURATION</div>
-                            <div style="font-size: 1.3rem; font-weight: 700; color: #34d399;">{meta['duration']}s</div>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("🚀 EXECUTE MULTIMODAL FORENSIC ANALYSIS", use_container_width=True):
-            with st.spinner("Executing spatial CNN inference, extracting audio features, and calculating lip synchronization..."):
-                t_start = time.time()
-                frames, timestamps = visual_detector.sample_frames(video_path, num_samples=16)
-                audio_res = audio_analyzer.analyze_audio(video_path)
-                sync_res = sync_analyzer.analyze_synchronization(audio_res, video_path)
-                vis_res = visual_detector.predict_frames(frames)
-                trust_res = trust_engine.evaluate(vis_res, audio_res, sync_res)
-                exec_latency = round(time.time() - t_start, 3)
-
-            render_multimodal_forensic_results(trust_res, vis_res, audio_res, sync_res, frames, timestamps, exec_latency)
+                render_multimodal_forensic_results(trust_res, vis_res, audio_res, sync_res, frames, timestamps, exec_latency)
