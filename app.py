@@ -1,4 +1,4 @@
-"""
+
 DeepShield: Multimodal Deepfake Forensic Engine
 Streamlit Web Application — High-Tech Cyber UI Edition
 """
@@ -261,6 +261,74 @@ st.markdown("""
     .filmstrip-card:hover {
         transform: scale(1.05);
         border-color: #38bdf8;
+    }
+
+    /* Responsive layout for phones, tablets, and narrow laptop windows */
+    .block-container {
+        width: 100% !important;
+        max-width: 1500px !important;
+    }
+    @media (max-width: 768px) {
+        section[data-testid="stSidebar"], [data-testid="stSidebar"] {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            bottom: 0 !important;
+            width: min(86vw, 320px) !important;
+            min-width: 0 !important;
+            max-width: 86vw !important;
+            z-index: 1000 !important;
+            overflow-y: auto !important;
+        }
+        [data-testid="stSidebarCollapseButton"],
+        button[data-testid="stSidebarCollapseButton"],
+        [data-testid="stSidebar"] button[kind="header"] {
+            display: flex !important;
+            visibility: visible !important;
+        }
+        [data-testid="stSidebarCollapsedControl"],
+        [data-testid="collapsedControl"] {
+            display: flex !important;
+            visibility: visible !important;
+            z-index: 1001 !important;
+        }
+        [data-testid="stMainBlockContainer"], .block-container {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 1rem 0.75rem 2rem !important;
+        }
+        [data-testid="stHorizontalBlock"] {
+            flex-direction: column !important;
+            gap: 1rem !important;
+        }
+        [data-testid="stHorizontalBlock"] > div {
+            width: 100% !important;
+            min-width: 100% !important;
+            flex: 1 1 100% !important;
+        }
+        .cyber-hero {
+            padding: 20px !important;
+            margin-bottom: 16px !important;
+        }
+        .cyber-hero h1 {
+            font-size: 1.7rem !important;
+            line-height: 1.15 !important;
+        }
+        h2 { font-size: 1.45rem !important; line-height: 1.2 !important; }
+        h3 { font-size: 1.2rem !important; }
+        .stButton > button {
+            width: 100% !important;
+            min-height: 44px !important;
+            padding: 10px 14px !important;
+        }
+        [data-testid="stFileUploader"] { padding: 10px !important; }
+        iframe, video { max-width: 100% !important; }
+    }
+    @media (min-width: 769px) and (max-width: 1100px) {
+        [data-testid="stHorizontalBlock"] > div {
+            min-width: 0 !important;
+        }
+        .block-container { padding-left: 2rem !important; padding-right: 2rem !important; }
     }
 </style>
 """, unsafe_allow_html=True)
