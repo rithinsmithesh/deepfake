@@ -170,6 +170,22 @@ class DeepShieldVisualDetector:
         sample_idx = np.linspace(0, len(all_frames) - 1, num_samples, dtype=int)
         return [all_frames[i] for i in sample_idx], [all_times[i] for i in sample_idx]
 
+    @staticmethod
+    def _coerce_image(image):
+        """Convert WebRTC/OpenCV frames to the PIL format expected by torchvision."""
+        if isinstance(image, Image.Image):
+            return image.convert("RGB")
+        if isinstance(image, np.ndarray):
+            array = np.asarray(image)
+            if array.ndim == 2:
+                return Image.fromarray(array).convert("RGB")
+            if array.ndim != 3 or array.shape[2] not in (3, 4):
+                raise TypeError(f"Unsupported image shape: {array.shape}")
+            if array.shape[2] == 4:
+                array = array[:, :, :3]
+            return Image.fromarray(cv2.cvtColor(array, cv2.COLOR_BGR2RGB)).convert("RGB")
+        raise TypeError(f"Unsupported image type: {type(image)!r}")
+
     def predict_frames(self, pil_frames):
         """
         Runs genuine PyTorch inference if checkpoint is loaded.
@@ -203,8 +219,9 @@ class DeepShieldVisualDetector:
             }
 
         start_time = time.time()
+        normalized_frames = [(f_idx, self._coerce_image(img)) for f_idx, img in pil_frames]
         tensors = []
-        for _, img in pil_frames:
+        for _, img in normalized_frames:
             tensor = self.transform(img)
             tensors.append(tensor)
 
@@ -218,7 +235,7 @@ class DeepShieldVisualDetector:
         inference_time = round(time.time() - start_time, 4)
 
         frame_results = []
-        for i, (f_idx, _) in enumerate(pil_frames):
+        for i, (f_idx, _) in enumerate(normalized_frames):
             frame_results.append({
                 "frame_index": f_idx,
                 "label": self.classes[int(preds[i])],
@@ -240,7 +257,7 @@ class DeepShieldVisualDetector:
             "mean_real_prob": round(mean_real_prob * 100, 2),
             "frame_results": frame_results,
             "inference_time_sec": inference_time,
-            "frames_analyzed": len(pil_frames),
+            "frames_analyzed": len(normalized_frames),
             "device": str(self.device),
             "benchmarks": VERIFIED_BENCHMARKS
         }

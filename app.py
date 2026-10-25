@@ -11,6 +11,7 @@ import tempfile
 import time
 import datetime
 import hashlib
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -28,6 +29,8 @@ from src.trust_engine import DeepShieldTrustEngine
 from src.dataset_analytics import DeepShieldDatasetAnalytics
 from src.live_camera_processor import LiveCameraProcessor
 from src.live_recorder import render_live_webcam_recorder
+
+ROOT_DIR = Path(__file__).resolve().parent
 
 
 # ---------------------------------------------------------
@@ -598,8 +601,8 @@ st.markdown("""
 # ---------------------------------------------------------
 @st.cache_resource
 def get_visual_detector():
-    checkpoint_default = "models/FINAL_EfficientNet_B0_FakeAVCeleb.pth"
-    return DeepShieldVisualDetector(checkpoint_path=checkpoint_default)
+    checkpoint_default = ROOT_DIR / "models" / "FINAL_EfficientNet_B0_FakeAVCeleb.pth"
+    return DeepShieldVisualDetector(checkpoint_path=str(checkpoint_default))
 
 @st.cache_resource
 def get_audio_analyzer():
@@ -607,8 +610,8 @@ def get_audio_analyzer():
 
 @st.cache_resource
 def get_sync_analyzer():
-    task_model = "models/face_landmarker.task"
-    return DeepShieldSyncAnalyzer(task_model_path=task_model)
+    task_model = ROOT_DIR / "models" / "face_landmarker.task"
+    return DeepShieldSyncAnalyzer(task_model_path=str(task_model))
 
 def get_trust_engine():
     return DeepShieldTrustEngine(visual_weight=0.75, sync_weight=0.25)
@@ -619,8 +622,8 @@ def get_dataset_analytics():
 
 @st.cache_resource
 def get_live_camera_processor():
-    task_model = "models/face_landmarker.task"
-    return LiveCameraProcessor(task_model_path=task_model)
+    task_model = ROOT_DIR / "models" / "face_landmarker.task"
+    return LiveCameraProcessor(task_model_path=str(task_model))
 
 
 visual_detector = get_visual_detector()
@@ -1383,16 +1386,16 @@ elif selected_page == "🎬 Multimodal Forensic Lab":
 
     # OPTION C: PRESET DEMO VIDEOS
     elif "Your Real Video" in selected_preset:
-        video_path = "assets/samples/DeepShield_Test_Video_With_Audio (5).mp4"
+        video_path = str(ROOT_DIR / "assets" / "samples" / "DeepShield_Test_Video_With_Audio (5).mp4")
         video_title = "DeepShield_User_Talking_Sample.mp4"
     elif "Demo 1" in selected_preset:
-        video_path = "assets/samples/sample_talking_face.mp4"
+        video_path = str(ROOT_DIR / "assets" / "samples" / "sample_talking_face.mp4")
         video_title = "Synthetic_Face_Synced.mp4"
     elif "Demo 2" in selected_preset:
-        video_path = "assets/samples/sample_desync_face.mp4"
+        video_path = str(ROOT_DIR / "assets" / "samples" / "sample_desync_face.mp4")
         video_title = "Synthetic_Face_Desync.mp4"
     elif "Demo 3" in selected_preset:
-        video_path = "assets/samples/sample_no_audio.mp4"
+        video_path = str(ROOT_DIR / "assets" / "samples" / "sample_no_audio.mp4")
         video_title = "Muted_Video_No_Audio.mp4"
     else:
         uploaded_file = st.file_uploader(

@@ -59,6 +59,13 @@ streamlit run app.py
 ```
 The application will open in your default browser at `http://localhost:8501`.
 
+### 4. Public deployment
+
+The live public app is available at **[deepfakeaudio.streamlit.app](https://deepfakeaudio.streamlit.app)**.
+It is deployed from this repository's `main` branch on Streamlit Community Cloud, so visitors can open it from any device without running the local app or Cloudflare tunnel.
+
+The `trycloudflare.com` address is a temporary development tunnel. It changes or stops when the local tunnel process ends and should not be used as the production link.
+
 ---
 
 ## 🧠 Visual Model Integration (`FINAL_EfficientNet_B0_FakeAVCeleb.pth`)
