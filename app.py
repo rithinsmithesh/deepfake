@@ -438,7 +438,6 @@ elif selected_page == "🎬 Multimodal Forensic Lab":
         "🔇 Synthetic Demo 3 (Stripped Audio / Muted)",
         "📤 Upload Custom File",
         "📹 Live Camera & Video Call Feed",
-        "📸 Live Camera Instant Snapshot"
     ]
     selected_preset = st.selectbox("Preset Selector", preset_options, label_visibility="collapsed")
 
@@ -446,9 +445,6 @@ elif selected_page == "🎬 Multimodal Forensic Lab":
         render_live_camera(visual_detector, capture_mode="video_call")
         st.stop()
 
-    if "Instant Snapshot" in selected_preset:
-        render_live_camera(visual_detector, capture_mode="snapshot")
-        st.stop()
 
     video_path = None
     video_title = ""
