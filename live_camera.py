@@ -50,7 +50,8 @@ def _rtc_configuration() -> dict[str, Any]:
     turn_urls = _read_secret("TURN_URLS")
     turn_username = _read_secret("TURN_USERNAME")
     turn_credential = _read_secret("TURN_CREDENTIAL")
-    if turn_urls and turn_username and turn_credential:
+    has_custom_turn = bool(turn_urls and turn_username and turn_credential)
+    if has_custom_turn:
         if isinstance(turn_urls, str):
             turn_urls = [item.strip() for item in turn_urls.split(",") if item.strip()]
         ice_servers.append(
@@ -58,6 +59,20 @@ def _rtc_configuration() -> dict[str, Any]:
                 "urls": list(turn_urls),
                 "username": str(turn_username),
                 "credential": str(turn_credential),
+            }
+        )
+    else:
+        # Last-resort relay for Streamlit Cloud and restrictive Wi-Fi/mobile networks.
+        # Cloudflare/custom TURN takes precedence when configured in Streamlit secrets.
+        ice_servers.append(
+            {
+                "urls": [
+                    "turn:openrelay.metered.ca:80",
+                    "turn:openrelay.metered.ca:443",
+                    "turn:openrelay.metered.ca:443?transport=tcp",
+                ],
+                "username": "openrelayproject",
+                "credential": "openrelayproject",
             }
         )
     return {"iceServers": ice_servers}
@@ -217,7 +232,7 @@ def render_live_camera(visual_detector: Any, capture_mode: str = "video_call") -
 
     if not is_running:
         st.info(
-            "Connecting to the live camera. Allow camera and microphone access; if it stays waiting, reload the page or switch networks."
+            "Connecting to the live camera. Allow camera and microphone access; if it stays waiting, click Start Camera again or switch networks."
         )
 
     duration_options = {
@@ -236,10 +251,10 @@ def render_live_camera(visual_detector: Any, capture_mode: str = "video_call") -
     stored_frames = st.session_state.get("deepshield_live_frames", [])
     control_start, control_stop, control_execute = st.columns(3)
     start_recording = control_start.button(
-        "🔴 START RECORDING CALL",
+        "🔴 START RECORDING CALL" if is_running else "▶️ START CAMERA",
         type="primary",
         use_container_width=True,
-        disabled=not is_running,
+        disabled=False,
     )
     stop_camera = control_stop.button(
         "⏹ STOP CAMERA",
@@ -255,11 +270,15 @@ def render_live_camera(visual_detector: Any, capture_mode: str = "video_call") -
         st.session_state["deepshield_live_camera_desired"] = False
         st.rerun()
 
-    if start_recording and processor is not None:
-        with st.spinner(f"Capturing a {duration}-second forensic window..."):
-            st.session_state["deepshield_live_frames"] = _capture_live_window(processor, duration)
-        st.success("Recording captured. Click Execute Forensic Analysis to inspect it.")
-        st.rerun()
+    if start_recording:
+        if not is_running:
+            st.session_state["deepshield_live_camera_desired"] = True
+            st.rerun()
+        elif processor is not None:
+            with st.spinner(f"Capturing a {duration}-second forensic window..."):
+                st.session_state["deepshield_live_frames"] = _capture_live_window(processor, duration)
+            st.success("Recording captured. Click Execute Forensic Analysis to inspect it.")
+            st.rerun()
 
     if execute_analysis:
         frames_to_analyze = st.session_state.get("deepshield_live_frames", [])
