@@ -268,7 +268,7 @@ def render_live_camera(visual_detector: Any, capture_mode: str = "video_call") -
                 visual_detector, frames_to_analyze
             )
         else:
-            st.warning("Capture a recording or take a camera snapshot before executing the analysis.")
+            st.warning("Capture a recording before executing the analysis.")
 
     result = st.session_state.get("deepshield_live_result")
     if result:
