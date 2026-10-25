@@ -161,6 +161,7 @@ def render_live_camera(visual_detector: Any, capture_mode: str = "video_call") -
         .live-call-dot { width:11px; height:11px; border-radius:50%; background:#34d399; box-shadow:0 0 12px #34d399; }
         .live-call-status.waiting .live-call-dot { background:#fbbf24; box-shadow:0 0 12px #fbbf24; }
         .live-call-timer { color:#38bdf8; font-family:monospace; font-size:1.7rem; font-weight:800; text-align:right; margin:8px 0; }
+        iframe[src*="streamlit_webrtc"] { width:100% !important; height:520px !important; border:0 !important; border-radius:18px !important; overflow:hidden !important; }
         @media (max-width: 768px) { .live-call-shell { padding:16px 14px 8px; } .live-call-title { font-size:1rem; } .live-call-timer { text-align:left; font-size:1.3rem; } }
         </style>
         <div class="live-call-shell">
@@ -185,6 +186,8 @@ def render_live_camera(visual_detector: Any, capture_mode: str = "video_call") -
             _render_result(result)
         return
 
+    desired_playing = st.session_state.get("deepshield_live_camera_desired", True)
+
     context = webrtc_streamer(
         key="deepshield-live-camera",
         mode=WebRtcMode.SENDRECV,
@@ -198,6 +201,9 @@ def render_live_camera(visual_detector: Any, capture_mode: str = "video_call") -
             "audio": True,
         },
         async_processing=True,
+        desired_playing_state=desired_playing,
+        media_toggle_controls=False,
+        video_html_attrs={"autoPlay": True, "controls": False, "muted": True, "playsInline": True, "style": {"width": "100%", "height": "100%", "objectFit": "cover", "borderRadius": "18px"}},
         rtc_configuration=_rtc_configuration(),
     )
 
@@ -210,17 +216,12 @@ def render_live_camera(visual_detector: Any, capture_mode: str = "video_call") -
         unsafe_allow_html=True,
     )
     st.caption(
-        "Use the component Start button to request permission. Its Stop button releases the camera and microphone."
+        "Camera access is requested automatically. Allow permission, then use the recording button below."
     )
 
     if not is_running:
-        st.warning(
-            "Live video is taking too long to connect. This is usually a network ICE/TURN restriction, "
-            "not a problem with your camera."
-        )
         st.info(
-            "Try Select Device, allow camera and microphone access, or switch Wi-Fi/mobile data. "
-            "For restricted networks, configure Cloudflare TURN secrets in Streamlit Cloud."
+            "Connecting to the live camera. If your network blocks WebRTC, choose 📸 Live Camera Instant Snapshot."
         )
         st.markdown("#### 📸 Reliable camera fallback")
         st.caption("This fallback captures one camera frame without WebRTC and works when live video is blocked.")
