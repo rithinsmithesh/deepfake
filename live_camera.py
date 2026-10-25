@@ -171,6 +171,20 @@ def render_live_camera(visual_detector: Any, capture_mode: str = "video_call") -
         unsafe_allow_html=True,
     )
 
+    if is_snapshot_mode:
+        st.markdown(
+            "<div class='live-call-status'><span class='live-call-dot'></span>SNAPSHOT CAMERA READY</div>",
+            unsafe_allow_html=True,
+        )
+        st.caption("Take one camera photo for forensic analysis without a live WebRTC connection.")
+        snapshot_upload = st.camera_input("Capture a camera snapshot", key="deepshield-camera-snapshot")
+        if snapshot_upload is not None:
+            _analyze_camera_upload(visual_detector, snapshot_upload)
+        result = st.session_state.get("deepshield_live_result")
+        if result:
+            _render_result(result)
+        return
+
     context = webrtc_streamer(
         key="deepshield-live-camera",
         mode=WebRtcMode.SENDRECV,
