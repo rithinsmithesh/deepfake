@@ -1250,6 +1250,19 @@ elif selected_page == "🎬 Multimodal Forensic Lab":
             duration = rec_result.get("duration", 0.0)
             video_title = f"Live_Webcam_Call_{int(time.time())}.mp4"
             st.success(f"✓ Live Call Captured ({duration:.1f}s, {round(rec_result['raw_size']/1024, 1)} KB). Ready for analysis!")
+        else:
+            st.markdown("""
+            <div class="glass-card" style="border-left: 3px solid #38bdf8; margin-top: 14px; padding: 12px 16px;">
+                <div style="font-weight: 700; color: #f8fafc; font-size: 0.92rem; display: flex; align-items: center; gap: 8px;">
+                    <span>👉</span> <span>HOW TO EXECUTE LIVE ANALYSIS:</span>
+                </div>
+                <div style="color: #cbd5e1; font-size: 0.84rem; margin-top: 6px; line-height: 1.5;">
+                    1. Tap the big red <strong>"START RECORDING CALL"</strong> button inside the camera box above.<br>
+                    2. Speak for 5–8 seconds. Tap <strong>"STOP RECORDING NOW"</strong> (or let the 8-second timer finish).<br>
+                    3. The <strong>🚀 EXECUTE MULTIMODAL FORENSIC ANALYSIS</strong> button will appear right here!
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
     # OPTION B: LIVE CAMERA INSTANT SNAPSHOT
     elif "📸 Live Camera Instant Snapshot" in selected_preset:
@@ -1397,6 +1410,9 @@ elif selected_page == "🎬 Multimodal Forensic Lab":
     # Video Player, Telemetry & Multimodal Analysis Execution
     if video_path and os.path.exists(video_path):
         st.markdown("<br>", unsafe_allow_html=True)
+        btn_label = "🚀 EXECUTE MULTIMODAL FORENSIC ANALYSIS ON LIVE CALL" if "📹 Live Camera" in selected_preset else "🚀 EXECUTE MULTIMODAL FORENSIC ANALYSIS"
+        execute_clicked = st.button(btn_label, key="btn_run_multimodal_analysis", use_container_width=True, type="primary")
+
         col_player, col_telemetry = st.columns([1.1, 1])
 
         with col_player:
@@ -1430,9 +1446,7 @@ elif selected_page == "🎬 Multimodal Forensic Lab":
                 </div>
                 """, unsafe_allow_html=True)
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        btn_label = "🚀 EXECUTE MULTIMODAL FORENSIC ANALYSIS ON LIVE CALL" if "📹 Live Camera" in selected_preset else "🚀 EXECUTE MULTIMODAL FORENSIC ANALYSIS"
-        if st.button(btn_label, key="btn_run_multimodal_analysis", use_container_width=True):
+        if execute_clicked:
             with st.spinner("Executing spatial CNN inference, extracting audio features, and calculating lip synchronization..."):
                 t_start = time.time()
                 frames, timestamps = visual_detector.sample_frames(video_path, num_samples=16)
