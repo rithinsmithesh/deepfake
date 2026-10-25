@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import io
+import os
 import threading
 import time
 from collections import deque
@@ -10,22 +12,44 @@ from typing import Any
 import av
 import numpy as np
 import pandas as pd
+from PIL import Image
 import streamlit as st
 from streamlit_webrtc import WebRtcMode, VideoProcessorBase, webrtc_streamer
 
 
-def _rtc_configuration() -> dict[str, Any]:
-    """Build browser/server ICE configuration without exposing credentials."""
-    ice_servers: list[dict[str, Any]] = [
-        {"urls": ["stun:stun.l.google.com:19302"]}
-    ]
+def _read_secret(name: str) -> Any:
     try:
-        turn_urls = st.secrets.get("TURN_URLS")
-        turn_username = st.secrets.get("TURN_USERNAME")
-        turn_credential = st.secrets.get("TURN_CREDENTIAL")
+        return st.secrets.get(name)
     except Exception:
-        turn_urls = turn_username = turn_credential = None
+        return None
 
+
+def _rtc_configuration() -> dict[str, Any]:
+    """Build ICE servers with Cloudflare TURN, custom TURN, and STUN fallbacks."""
+    stun_servers = [
+        "stun:stun.l.google.com:19302",
+        "stun:stun1.l.google.com:19302",
+        "stun:stun.cloudflare.com:3478",
+    ]
+
+    cloudflare_id = _read_secret("CLOUDFLARE_TURN_KEY_ID")
+    cloudflare_token = _read_secret("CLOUDFLARE_TURN_KEY_API_TOKEN")
+    if cloudflare_id and cloudflare_token:
+        try:
+            os.environ["CLOUDFLARE_TURN_KEY_ID"] = str(cloudflare_id)
+            os.environ["CLOUDFLARE_TURN_KEY_API_TOKEN"] = str(cloudflare_token)
+            from streamlit_webrtc.credentials import get_cloudflare_ice_servers
+
+            cloudflare_servers = get_cloudflare_ice_servers()
+            if cloudflare_servers:
+                return {"iceServers": cloudflare_servers}
+        except Exception:
+            pass
+
+    ice_servers: list[dict[str, Any]] = [{"urls": stun_servers}]
+    turn_urls = _read_secret("TURN_URLS")
+    turn_username = _read_secret("TURN_USERNAME")
+    turn_credential = _read_secret("TURN_CREDENTIAL")
     if turn_urls and turn_username and turn_credential:
         if isinstance(turn_urls, str):
             turn_urls = [item.strip() for item in turn_urls.split(",") if item.strip()]
@@ -86,6 +110,19 @@ def _capture_live_window(processor: LiveCameraProcessor, seconds: int) -> list[t
         time.sleep(0.25)
     timer.empty()
     return processor.snapshot(count=16)
+
+
+def _analyze_camera_upload(visual_detector: Any, uploaded_file: Any) -> None:
+    try:
+        image = np.asarray(Image.open(io.BytesIO(uploaded_file.getvalue())).convert("RGB"))[:, :, ::-1]
+        st.session_state["deepshield_live_result"] = _visual_live_result(
+            visual_detector, [(0, image)]
+        )
+    except Exception as exc:
+        st.session_state["deepshield_live_result"] = {
+            "status": "error",
+            "reason": f"Could not decode the camera snapshot: {exc}",
+        }
 
 
 def _render_result(result: dict[str, Any]) -> None:
@@ -163,10 +200,19 @@ def render_live_camera(visual_detector: Any, capture_mode: str = "video_call") -
     )
 
     if not is_running:
-        st.info(
-            "On first use, choose Allow while visiting the site. If the stream does not connect, use Select Device, "
-            "check browser permissions, and retry on another network."
+        st.warning(
+            "Live video is taking too long to connect. This is usually a network ICE/TURN restriction, "
+            "not a problem with your camera."
         )
+        st.info(
+            "Try Select Device, allow camera and microphone access, or switch Wi-Fi/mobile data. "
+            "For restricted networks, configure Cloudflare TURN secrets in Streamlit Cloud."
+        )
+        st.markdown("#### 📸 Reliable camera fallback")
+        st.caption("This fallback captures one camera frame without WebRTC and works when live video is blocked.")
+        fallback_upload = st.camera_input("Capture a camera snapshot", key="deepshield-camera-fallback")
+        if fallback_upload is not None:
+            _analyze_camera_upload(visual_detector, fallback_upload)
 
     duration_options = {
         "8 Seconds (Recommended)": 8,
