@@ -10,6 +10,7 @@ from collections import deque
 from typing import Any
 
 import av
+import cv2
 import numpy as np
 import pandas as pd
 from PIL import Image
@@ -76,28 +77,51 @@ class LiveCameraProcessor(VideoProcessorBase):
             self._frames.append(image.copy())
         return av.VideoFrame.from_ndarray(image, format="bgr24")
 
-    def snapshot(self, count: int = 16) -> list[tuple[int, np.ndarray]]:
+    def snapshot(self, count: int = 16) -> list[tuple[int, Image.Image]]:
         with self._lock:
             frames = list(self._frames)[-count:]
         if not frames:
             return []
         indexes = np.linspace(0, len(frames) - 1, min(count, len(frames)), dtype=int)
-        return [(int(index), frames[index]) for index in indexes]
+        return [
+            (
+                int(index),
+                Image.fromarray(cv2.cvtColor(frames[index], cv2.COLOR_BGR2RGB)).convert("RGB"),
+            )
+            for index in indexes
+        ]
 
 
-def _visual_live_result(visual_detector: Any, frames: list[tuple[int, np.ndarray]]) -> dict[str, Any]:
+def _to_pil_frame(frame: Any) -> Image.Image:
+    """Normalize browser/WebRTC frames to the PIL format used by the detector."""
+    if isinstance(frame, Image.Image):
+        return frame.convert("RGB")
+    if isinstance(frame, np.ndarray):
+        array = np.asarray(frame)
+        if array.ndim == 2:
+            return Image.fromarray(array).convert("RGB")
+        if array.ndim != 3 or array.shape[2] not in (3, 4):
+            raise TypeError(f"Unsupported camera frame shape: {array.shape}")
+        if array.shape[2] == 4:
+            array = array[:, :, :3]
+        return Image.fromarray(cv2.cvtColor(array, cv2.COLOR_BGR2RGB)).convert("RGB")
+    raise TypeError(f"Unsupported camera frame type: {type(frame)!r}")
+
+
+def _visual_live_result(visual_detector: Any, frames: list[tuple[int, Any]]) -> dict[str, Any]:
     if not frames:
         return {"status": "error", "reason": "No camera frames received yet."}
     try:
-        result = visual_detector.predict_frames(frames)
+        normalized_frames = [(int(index), _to_pil_frame(frame)) for index, frame in frames]
+        result = visual_detector.predict_frames(normalized_frames)
         result["live_mode"] = True
-        result["frames_analyzed"] = len(frames)
+        result["frames_analyzed"] = len(normalized_frames)
         return result
     except Exception as exc:
         return {"status": "error", "reason": str(exc), "live_mode": True}
 
 
-def _capture_live_window(processor: LiveCameraProcessor, seconds: int) -> list[tuple[int, np.ndarray]]:
+def _capture_live_window(processor: LiveCameraProcessor, seconds: int) -> list[tuple[int, Image.Image]]:
     """Keep the live stream running while the user records a short call window."""
     timer = st.empty()
     started = time.time()
@@ -114,7 +138,7 @@ def _capture_live_window(processor: LiveCameraProcessor, seconds: int) -> list[t
 
 def _analyze_camera_upload(visual_detector: Any, uploaded_file: Any) -> None:
     try:
-        image = np.asarray(Image.open(io.BytesIO(uploaded_file.getvalue())).convert("RGB"))[:, :, ::-1]
+        image = Image.open(io.BytesIO(uploaded_file.getvalue())).convert("RGB")
         st.session_state["deepshield_live_frames"] = [(0, image)]
         st.session_state["deepshield_live_result"] = _visual_live_result(
             visual_detector, st.session_state["deepshield_live_frames"]
