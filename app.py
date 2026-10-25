@@ -336,6 +336,30 @@ st.markdown("""
         transform: scale(1.05);
         border-color: #38bdf8;
     }
+
+    /* Lip Synchronization Filmstrip */
+    .lip-card {
+        background: #0b0f19;
+        border: 1.5px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        padding: 4px;
+        text-align: center;
+        transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .lip-card.open-lip {
+        border-color: rgba(236, 72, 153, 0.7);
+        box-shadow: 0 0 12px rgba(236, 72, 153, 0.25);
+    }
+    .lip-card.closure-lip {
+        border-color: rgba(16, 185, 129, 0.7);
+        box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
+    }
+    .lip-card.pause-lip {
+        border-color: rgba(56, 189, 248, 0.5);
+    }
+    .lip-card:hover {
+        transform: scale(1.05);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -779,8 +803,76 @@ Inference Latency: {exec_latency}s
 
     # TAB 4: AUDIO-LIP SYNCHRONIZATION
     with tab_sync:
-        st.markdown("### 👄 Temporal Audio–Lip Synchronization")
+        st.markdown("### 👄 Temporal Audio–Lip Synchronization & Frame Execution")
         if sync_res.get("success"):
+            # 1. Pipeline Execution Stages
+            st.markdown("""
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px;">
+                <div class="glass-card" style="padding: 10px; text-align: center; border-top: 2px solid #38bdf8;">
+                    <div style="font-size: 0.72rem; color: #94a3b8; font-family: monospace;">STAGE 1</div>
+                    <div style="font-weight: 700; font-size: 0.85rem; color: #f8fafc;">478 Landmark Tracking</div>
+                </div>
+                <div class="glass-card" style="padding: 10px; text-align: center; border-top: 2px solid #ec4899;">
+                    <div style="font-size: 0.72rem; color: #94a3b8; font-family: monospace;">STAGE 2</div>
+                    <div style="font-weight: 700; font-size: 0.85rem; color: #f8fafc;">Lip Caliper |y14 - y13|</div>
+                </div>
+                <div class="glass-card" style="padding: 10px; text-align: center; border-top: 2px solid #c084fc;">
+                    <div style="font-size: 0.72rem; color: #94a3b8; font-family: monospace;">STAGE 3</div>
+                    <div style="font-weight: 700; font-size: 0.85rem; color: #f8fafc;">16kHz RMS Acoustic Power</div>
+                </div>
+                <div class="glass-card" style="padding: 10px; text-align: center; border-top: 2px solid #10b981;">
+                    <div style="font-size: 0.72rem; color: #94a3b8; font-family: monospace;">STAGE 4</div>
+                    <div style="font-weight: 700; font-size: 0.85rem; color: #f8fafc;">Cross-Modal Pearson-r</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # 2. Visual Lip Frames & Execution Filmstrip
+            lip_frames = sync_res.get("lip_frames", [])
+            if lip_frames and len(lip_frames) > 0:
+                col_mode, col_count = st.columns([1.5, 1])
+                with col_mode:
+                    view_mode = st.radio(
+                        "INSPECTION VIEW MODE",
+                        ["🔍 Zoomed Mouth ROIs (Viseme Calipers)", "👤 Full Face Biometric Landmark Mesh"],
+                        index=0,
+                        horizontal=True,
+                        key="sync_view_mode"
+                    )
+                with col_count:
+                    st.markdown(f"""
+                    <div style="text-align: right; padding-top: 14px;">
+                        <span class="badge badge-purple">{len(lip_frames)} BIOMETRIC FRAMES EXTRACTED</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                st.markdown("<div style='font-size: 0.8rem; font-family: monospace; color: #94a3b8; margin: 10px 0 8px 0;'>SYNCHRONIZED PHONEME-TO-VISEME EXECUTION FILMSTRIP:</div>", unsafe_allow_html=True)
+
+                cols_lip = st.columns(min(8, len(lip_frames)))
+                for idx, lf in enumerate(lip_frames[:8]):
+                    with cols_lip[idx]:
+                        img_to_show = lf["mouth_crop"] if "Zoomed Mouth" in view_mode else lf["annotated_face"]
+                        st_color = lf.get("state_color", "#ec4899")
+                        c_class = "open-lip" if "Vocalizing" in lf.get("state_label", "") else ("closure-lip" if "Closure" in lf.get("state_label", "") else "pause-lip")
+                        
+                        st.markdown(f"""
+                        <div class="lip-card {c_class}">
+                            <div style="font-size: 0.68rem; font-family: monospace; color: #38bdf8; font-weight: 700;">
+                                F#{lf['frame_index']} ({lf['time_sec']}s)
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        st.image(img_to_show, use_container_width=True)
+                        st.markdown(f"""
+                        <div style="text-align: center; margin-top: 4px; font-size: 0.72rem; font-family: monospace; line-height: 1.3;">
+                            <span style="color: {st_color}; font-weight: 700;">{lf['state_label'].split('(')[0]}</span><br>
+                            <span style="color: #cbd5e1;">Lip: {lf['aperture_px']:.1f}px</span><br>
+                            <span style="color: #94a3b8;">RMS: {lf['speech_energy']:.3f}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            # 3. Dynamic Audio-Visual Cross-Correlation Curve
             st.markdown("<div class='hud-metric-title'>TEMPORAL COHERENCE: SPEECH VOCAL ENERGY vs. LIP APERTURE</div>", unsafe_allow_html=True)
             df_sync = pd.DataFrame({
                 "Time (s)": sync_res["audio_times"],
@@ -797,18 +889,26 @@ Inference Latency: {exec_latency}s
                 template="plotly_dark",
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(15, 23, 42, 0.4)",
-                height=300,
+                height=280,
                 margin=dict(l=30, r=20, t=20, b=30)
             )
             st.plotly_chart(fig_s, use_container_width=True)
 
+            # 4. Correlation & Bilabial Consonants Forensic Card
+            corr = sync_res['correlation']
+            corr_class = "HIGH CORRELATION" if corr > 0.15 else ("MODERATE CORRELATION" if corr > 0.05 else "LOW / DESYNC")
             st.markdown(f"""
-            <div class="glass-card" style="border-left: 3px solid #10b981; margin-top: 14px;">
-                <span class="badge badge-green">TOP-TIER HUMAN SYNCHRONIZATION</span>
-                <div style="font-size: 1.1rem; font-weight: 700; color: #f8fafc; margin-top: 6px;">Sync Score: {sync_res['sync_score']:.2f} / 100 (Pearson r = {sync_res['correlation']:.4f})</div>
-                <p style="color: #cbd5e1; font-size: 0.88rem; margin-top: 4px;">
-                    In the 230-video FakeAVCeleb experiment, authentic human speech averages only <strong>9.37</strong> (median 6.48). 
-                    Scores above 15.0 represent high synchronization due to non-linear bilabial consonants ('M', 'B', 'P') where human lips close during vocalization.
+            <div class="glass-card" style="border-left: 4px solid #10b981; margin-top: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span class="badge badge-green">{corr_class}</span>
+                        <div style="font-size: 1.15rem; font-weight: 700; color: #f8fafc; margin-top: 6px;">
+                            Biometric Sync Score: {sync_res['sync_score']:.2f} / 100 &nbsp;|&nbsp; Pearson r = {corr:.4f} &nbsp;|&nbsp; p-value = {sync_res['p_value']:.4e}
+                        </div>
+                    </div>
+                </div>
+                <p style="color: #cbd5e1; font-size: 0.88rem; margin-top: 8px; line-height: 1.6;">
+                    <strong>Forensic Biological Indicator:</strong> In genuine human vocalization, non-linear speech acoustics create natural <em>bilabial consonant closures</em> (for phonemes like /m/, /b/, /p/) where vocal cords vibrate while the lips briefly touch (aperture drops to near 0). Synthetic deepfake video puppetry (e.g. Wav2Lip) often renders linear mouth stretching that fails this temporal acoustic coherence check.
                 </p>
             </div>
             """, unsafe_allow_html=True)
