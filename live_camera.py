@@ -12,6 +12,35 @@ import streamlit as st
 from streamlit_webrtc import WebRtcMode, VideoProcessorBase, webrtc_streamer
 
 
+def _rtc_configuration() -> dict[str, Any]:
+    """Build browser/server ICE configuration without exposing credentials."""
+    ice_servers: list[dict[str, Any]] = [
+        {"urls": ["stun:stun.l.google.com:19302"]}
+    ]
+
+    # TURN is required on some Streamlit Community Cloud, office, and mobile
+    # networks. Configure these three values in Streamlit Cloud Secrets.
+    try:
+        turn_urls = st.secrets.get("TURN_URLS")
+        turn_username = st.secrets.get("TURN_USERNAME")
+        turn_credential = st.secrets.get("TURN_CREDENTIAL")
+    except Exception:
+        turn_urls = turn_username = turn_credential = None
+
+    if turn_urls and turn_username and turn_credential:
+        if isinstance(turn_urls, str):
+            turn_urls = [item.strip() for item in turn_urls.split(",") if item.strip()]
+        ice_servers.append(
+            {
+                "urls": list(turn_urls),
+                "username": str(turn_username),
+                "credential": str(turn_credential),
+            }
+        )
+
+    return {"iceServers": ice_servers}
+
+
 class LiveCameraProcessor(VideoProcessorBase):
     """Echo the camera stream and retain a rolling frame buffer."""
 
@@ -54,21 +83,35 @@ def render_live_camera(visual_detector: Any) -> None:
         "Stop releases the camera and ends the stream."
     )
     st.info(
-        "Your browser will ask for camera permission after you press Start. "
-        "Live mode evaluates visual frames; use uploaded video for the full audio–lip-sync pipeline."
+        "Press Start and allow camera access when your browser asks. On a phone, use Chrome or Safari "
+        "over HTTPS and allow camera access for deepfakeaudio.streamlit.app."
     )
 
     context = webrtc_streamer(
         key="deepshield-live-camera",
         mode=WebRtcMode.SENDRECV,
         video_processor_factory=LiveCameraProcessor,
-        media_stream_constraints={"video": True, "audio": False},
+        media_stream_constraints={
+            "video": {
+                "facingMode": {"ideal": "user"},
+                "width": {"ideal": 1280},
+                "height": {"ideal": 720},
+            },
+            "audio": False,
+        },
         async_processing=True,
-        rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+        rtc_configuration=_rtc_configuration(),
     )
 
     processor = context.video_processor
     is_running = bool(context.state.playing and processor is not None)
+    if not is_running:
+        st.caption(
+            "If the stream stays disconnected: check the browser camera permission, tap Select Device "
+            "to choose a camera, then retry on another Wi-Fi or mobile network. TURN credentials are "
+            "needed for some restricted networks."
+        )
+
     execute = st.button(
         "🚀 EXECUTE LIVE FRAME ANALYSIS",
         type="primary",
