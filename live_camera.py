@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import io
 import os
 import threading
 import time
@@ -136,19 +135,6 @@ def _capture_live_window(processor: LiveCameraProcessor, seconds: int) -> list[t
     return processor.snapshot(count=16)
 
 
-def _analyze_camera_upload(visual_detector: Any, uploaded_file: Any) -> None:
-    try:
-        image = Image.open(io.BytesIO(uploaded_file.getvalue())).convert("RGB")
-        st.session_state["deepshield_live_frames"] = [(0, image)]
-        st.session_state["deepshield_live_result"] = _visual_live_result(
-            visual_detector, st.session_state["deepshield_live_frames"]
-        )
-    except Exception as exc:
-        st.session_state["deepshield_live_result"] = {
-            "status": "error",
-            "reason": f"Could not decode the camera snapshot: {exc}",
-        }
-
 
 def _render_result(result: dict[str, Any]) -> None:
     st.divider()
@@ -173,8 +159,7 @@ def _render_result(result: dict[str, Any]) -> None:
 
 
 def render_live_camera(visual_detector: Any, capture_mode: str = "video_call") -> None:
-    """Render a permission-gated live video-call or instant-snapshot workflow."""
-    is_snapshot_mode = capture_mode == "snapshot"
+    """Render a permission-gated live video-call workflow."""
     st.markdown(
         """
         <style>
@@ -196,20 +181,6 @@ def render_live_camera(visual_detector: Any, capture_mode: str = "video_call") -
         """,
         unsafe_allow_html=True,
     )
-
-    if is_snapshot_mode:
-        st.markdown(
-            "<div class='live-call-status'><span class='live-call-dot'></span>SNAPSHOT CAMERA READY</div>",
-            unsafe_allow_html=True,
-        )
-        st.caption("Take one camera photo for forensic analysis without a live WebRTC connection.")
-        snapshot_upload = st.camera_input("Capture a camera snapshot", key="deepshield-camera-snapshot")
-        if snapshot_upload is not None:
-            _analyze_camera_upload(visual_detector, snapshot_upload)
-        result = st.session_state.get("deepshield_live_result")
-        if result:
-            _render_result(result)
-        return
 
     desired_playing = st.session_state.get("deepshield_live_camera_desired", True)
 
@@ -246,13 +217,8 @@ def render_live_camera(visual_detector: Any, capture_mode: str = "video_call") -
 
     if not is_running:
         st.info(
-            "Connecting to the live camera. If your network blocks WebRTC, choose 📸 Live Camera Instant Snapshot."
+            "Connecting to the live camera. Allow camera and microphone access; if it stays waiting, reload the page or switch networks."
         )
-        st.markdown("#### 📸 Reliable camera fallback")
-        st.caption("This fallback captures one camera frame without WebRTC and works when live video is blocked.")
-        fallback_upload = st.camera_input("Capture a camera snapshot", key="deepshield-camera-fallback")
-        if fallback_upload is not None:
-            _analyze_camera_upload(visual_detector, fallback_upload)
 
     duration_options = {
         "8 Seconds (Recommended)": 8,
