@@ -54,53 +54,78 @@ st.markdown("""
         font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
     }
 
-    /* Cohesive Sidebar Dark Background & Always-Visible Guarantee */
+    /* Responsive Main Block Container */
+    .block-container {
+        padding-top: 2rem !important;
+        padding-bottom: 3rem !important;
+    }
+    @media (max-width: 768px) {
+        .block-container {
+            padding-top: 3.5rem !important;
+            padding-bottom: 2rem !important;
+            padding-left: 0.75rem !important;
+            padding-right: 0.75rem !important;
+            max-width: 100% !important;
+        }
+    }
+
+    /* Cohesive Sidebar Dark Theme */
     section[data-testid="stSidebar"], [data-testid="stSidebar"] {
         background-color: #0d1424 !important;
         background: #0d1424 !important;
         border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
-        display: block !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        transform: none !important;
-        margin-left: 0 !important;
-        min-width: 270px !important;
-        max-width: 320px !important;
     }
 
-    /* Force visibility across all responsive viewports */
-    @media (max-width: 991.98px) {
+    /* Desktop Sidebar (>= 992px): Always Expanded */
+    @media (min-width: 992px) {
         section[data-testid="stSidebar"], [data-testid="stSidebar"] {
             display: block !important;
             visibility: visible !important;
+            opacity: 1 !important;
             transform: none !important;
             margin-left: 0 !important;
-            position: relative !important;
+            min-width: 270px !important;
+            max-width: 320px !important;
+        }
+        [data-testid="stSidebarCollapseButton"] {
+            display: none !important;
+        }
+    }
+
+    /* Mobile Sidebar (< 992px): Native Off-Canvas Drawer */
+    @media (max-width: 991.98px) {
+        section[data-testid="stSidebar"], [data-testid="stSidebar"] {
+            position: fixed !important;
+            top: 0 !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            height: 100vh !important;
+            z-index: 999999 !important;
+            max-width: 82vw !important;
+            min-width: 280px !important;
+            box-shadow: 8px 0 32px rgba(0, 0, 0, 0.85) !important;
+        }
+        [data-testid="stSidebarCollapseButton"] {
+            display: inline-flex !important;
+            color: #38bdf8 !important;
         }
     }
 
     [data-testid="stSidebarUserContent"], [data-testid="stSidebar"] > div:first-child {
         background-color: #0d1424 !important;
-        display: block !important;
-        visibility: visible !important;
     }
 
-    /* Prevent accidental sidebar collapsing by hiding collapse chevron */
-    [data-testid="stSidebarCollapseButton"],
-    button[data-testid="stSidebarCollapseButton"],
-    [data-testid="stSidebar"] button[kind="header"] {
-        display: none !important;
-    }
-
-    /* Prominent expand button in case collapsed state is cached in browser session */
+    /* Prominent Mobile Hamburger / Sidebar Expand Button */
     [data-testid="stSidebarCollapsedControl"],
     [data-testid="collapsedControl"] {
         display: flex !important;
         visibility: visible !important;
-        background-color: #1e293b !important;
+        background: rgba(15, 23, 42, 0.95) !important;
         color: #38bdf8 !important;
-        border: 1px solid rgba(56, 189, 248, 0.4) !important;
+        border: 1.5px solid rgba(56, 189, 248, 0.6) !important;
         border-radius: 8px !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6) !important;
+        z-index: 999998 !important;
     }
 
     /* Sidebar Radio Navigation */
@@ -142,6 +167,51 @@ st.markdown("""
         position: absolute;
         top: 0; left: 0; right: 0; height: 2px;
         background: linear-gradient(90deg, transparent, #38bdf8, #818cf8, transparent);
+    }
+    @media (max-width: 768px) {
+        .cyber-hero {
+            padding: 18px 16px !important;
+            margin-bottom: 16px !important;
+            border-radius: 12px !important;
+        }
+        .cyber-hero h1 {
+            font-size: 1.45rem !important;
+        }
+        .cyber-hero p {
+            font-size: 0.85rem !important;
+        }
+    }
+
+    /* Lab Header */
+    .lab-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 18px;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .lab-header-text h2 {
+        margin: 0;
+        font-size: 2rem;
+        color: #f8fafc;
+    }
+    .lab-header-text p {
+        color: #94a3b8;
+        margin: 4px 0 0 0;
+        font-size: 0.95rem;
+    }
+    @media (max-width: 640px) {
+        .lab-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .lab-header-text h2 {
+            font-size: 1.4rem !important;
+        }
+        .lab-header-text p {
+            font-size: 0.85rem !important;
+        }
     }
 
     /* Status Badges */
@@ -211,8 +281,79 @@ st.markdown("""
         border: 2px solid rgba(239, 68, 68, 0.5);
         box-shadow: 0 12px 40px rgba(239, 68, 68, 0.2), inset 0 1px 0 rgba(239, 68, 68, 0.3);
     }
+    @media (max-width: 768px) {
+        .verdict-banner {
+            padding: 16px 14px !important;
+            margin: 14px 0 !important;
+            border-radius: 12px !important;
+        }
+    }
 
-    /* KPI Holographic Tiles */
+    /* Responsive Verdict Header Row */
+    .verdict-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding-bottom: 14px;
+        margin-bottom: 18px;
+        gap: 14px;
+        flex-wrap: wrap;
+    }
+    .verdict-header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1 1 260px;
+    }
+    .verdict-header-right {
+        text-align: right;
+        flex: 0 0 auto;
+    }
+    .verdict-main-title {
+        font-size: 1.55rem;
+        font-weight: 800;
+        color: #ffffff;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+    }
+    @media (max-width: 640px) {
+        .verdict-header-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .verdict-header-right {
+            text-align: left;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .verdict-main-title {
+            font-size: 1.2rem !important;
+        }
+    }
+
+    /* Responsive KPI Holographic Grid */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+    }
+    @media (max-width: 991px) {
+        .kpi-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px !important;
+        }
+    }
+    @media (max-width: 500px) {
+        .kpi-grid {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+        }
+    }
+
     .kpi-card {
         background: rgba(11, 15, 25, 0.85);
         border: 1px solid rgba(255, 255, 255, 0.1);
@@ -226,6 +367,37 @@ st.markdown("""
         border-color: #38bdf8;
         box-shadow: 0 8px 24px rgba(56, 189, 248, 0.15);
     }
+    @media (max-width: 500px) {
+        .kpi-card {
+            padding: 14px 10px !important;
+        }
+        .kpi-card .hud-metric-value {
+            font-size: 1.8rem !important;
+        }
+    }
+
+    /* Pipeline Execution Stages Grid */
+    .stages-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+    @media (max-width: 800px) {
+        .stages-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 8px !important;
+        }
+    }
+    @media (max-width: 480px) {
+        .stages-grid {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 6px !important;
+        }
+        .stages-grid .stage-title {
+            font-size: 0.78rem !important;
+        }
+    }
 
     /* Mathematical Formula Box */
     .math-formula-box {
@@ -236,6 +408,14 @@ st.markdown("""
         padding: 16px 20px;
         margin: 14px 0;
         font-family: 'JetBrains Mono', monospace;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    @media (max-width: 768px) {
+        .math-formula-box {
+            padding: 12px 14px !important;
+            font-size: 0.85rem !important;
+        }
     }
 
     /* Glassmorphism Cards */
@@ -251,6 +431,12 @@ st.markdown("""
     .glass-card:hover {
         border-color: rgba(56, 189, 248, 0.35);
         box-shadow: 0 12px 36px rgba(56, 189, 248, 0.1);
+    }
+    @media (max-width: 768px) {
+        .glass-card {
+            padding: 14px !important;
+            border-radius: 10px !important;
+        }
     }
 
     /* HUD Metrics */
@@ -301,6 +487,7 @@ st.markdown("""
         padding: 12px 24px !important;
         box-shadow: 0 4px 20px rgba(79, 70, 229, 0.4) !important;
         transition: all 0.2s ease !important;
+        width: 100% !important;
     }
     .stButton>button:hover {
         transform: translateY(-2px) !important;
@@ -313,6 +500,28 @@ st.markdown("""
         border-radius: 14px;
         background: rgba(15, 23, 42, 0.4);
         padding: 16px;
+    }
+
+    /* Mobile Touch-Swipe Filmstrips */
+    @media (max-width: 768px) {
+        div[data-testid="stHorizontalBlock"]:has(.filmstrip-card),
+        div[data-testid="stHorizontalBlock"]:has(.lip-card) {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            scroll-snap-type: x mandatory !important;
+            gap: 10px !important;
+            padding-bottom: 12px !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.filmstrip-card) > div[data-testid="column"],
+        div[data-testid="stHorizontalBlock"]:has(.lip-card) > div[data-testid="column"] {
+            flex: 0 0 140px !important;
+            min-width: 140px !important;
+            max-width: 140px !important;
+            scroll-snap-align: start !important;
+        }
     }
 
     /* Filmstrip Gallery */
@@ -359,6 +568,26 @@ st.markdown("""
     }
     .lip-card:hover {
         transform: scale(1.05);
+    }
+
+    /* Responsive Streamlit Tabs */
+    button[data-baseweb="tab"] {
+        padding: 10px 14px !important;
+        font-size: 0.85rem !important;
+        font-weight: 600 !important;
+    }
+    @media (max-width: 768px) {
+        div[data-baseweb="tab-list"] {
+            overflow-x: auto !important;
+            flex-wrap: nowrap !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding-bottom: 4px !important;
+        }
+        button[data-baseweb="tab"] {
+            padding: 8px 10px !important;
+            font-size: 0.76rem !important;
+            white-space: nowrap !important;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -488,19 +717,19 @@ def render_multimodal_forensic_results(trust_res, vis_res, audio_res, sync_res, 
     # 1. HERO VERDICT CERTIFICATE BANNER
     st.markdown(f"""
     <div class="verdict-banner {v_color}">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 14px; margin-bottom: 18px;">
-            <div style="display: flex; align-items: center; gap: 14px;">
+        <div class="verdict-header-row">
+            <div class="verdict-header-left">
                 <span style="font-size: 2.2rem;">{status_icon}</span>
                 <div>
                     <div style="font-size: 0.76rem; font-family: 'JetBrains Mono', monospace; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.1em;">
                         DEEPSHIELD OFFICIAL FORENSIC VERDICT CERTIFICATE
                     </div>
-                    <div style="font-size: 1.55rem; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                    <div class="verdict-main-title">
                         {verdict_title}
                     </div>
                 </div>
             </div>
-            <div style="text-align: right;">
+            <div class="verdict-header-right">
                 <span class="badge {badge_style}" style="font-size: 0.85rem; padding: 6px 16px;">
                     {forensic_grade}
                 </span>
@@ -510,7 +739,7 @@ def render_multimodal_forensic_results(trust_res, vis_res, audio_res, sync_res, 
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;">
+        <div class="kpi-grid">
             <div class="kpi-card">
                 <div class="hud-metric-title">EXACT AUTHENTICITY SCORE</div>
                 <div class="hud-metric-value" style="color: {gauge_color}; font-size: 2.2rem;">
@@ -730,7 +959,7 @@ Inference Latency: {exec_latency}s
     # TAB 2: VISUAL CNN ANALYSIS
     with tab_visual:
         st.markdown("### 👁️ EfficientNet-B0 Frame Decomposition")
-        st.markdown(f"<div style='font-size: 0.8rem; font-family: monospace; color: #94a3b8; margin-bottom: 10px;'>UNIFORMLY EXTRACTED INSPECTION FRAMES ({len(frames)} SAMPLES) WITH PREDICTION HIGHLIGHTS:</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size: 0.8rem; font-family: monospace; color: #94a3b8; margin-bottom: 6px;'>UNIFORMLY EXTRACTED INSPECTION FRAMES ({len(frames)} SAMPLES) WITH PREDICTION HIGHLIGHTS:</div><div class='filmstrip-scroll-hint'>👉 Swipe horizontally to view all {len(frames)} frames</div>", unsafe_allow_html=True)
 
         frame_preds = vis_res.get("frame_results", [])
         cols = st.columns(min(8, max(1, len(frames))))
@@ -807,22 +1036,22 @@ Inference Latency: {exec_latency}s
         if sync_res.get("success"):
             # 1. Pipeline Execution Stages
             st.markdown("""
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px;">
+            <div class="stages-grid">
                 <div class="glass-card" style="padding: 10px; text-align: center; border-top: 2px solid #38bdf8;">
                     <div style="font-size: 0.72rem; color: #94a3b8; font-family: monospace;">STAGE 1</div>
-                    <div style="font-weight: 700; font-size: 0.85rem; color: #f8fafc;">478 Landmark Tracking</div>
+                    <div class="stage-title" style="font-weight: 700; font-size: 0.85rem; color: #f8fafc;">478 Landmark Tracking</div>
                 </div>
                 <div class="glass-card" style="padding: 10px; text-align: center; border-top: 2px solid #ec4899;">
                     <div style="font-size: 0.72rem; color: #94a3b8; font-family: monospace;">STAGE 2</div>
-                    <div style="font-weight: 700; font-size: 0.85rem; color: #f8fafc;">Lip Caliper |y14 - y13|</div>
+                    <div class="stage-title" style="font-weight: 700; font-size: 0.85rem; color: #f8fafc;">Lip Caliper |y14 - y13|</div>
                 </div>
                 <div class="glass-card" style="padding: 10px; text-align: center; border-top: 2px solid #c084fc;">
                     <div style="font-size: 0.72rem; color: #94a3b8; font-family: monospace;">STAGE 3</div>
-                    <div style="font-weight: 700; font-size: 0.85rem; color: #f8fafc;">16kHz RMS Acoustic Power</div>
+                    <div class="stage-title" style="font-weight: 700; font-size: 0.85rem; color: #f8fafc;">16kHz RMS Acoustic Power</div>
                 </div>
                 <div class="glass-card" style="padding: 10px; text-align: center; border-top: 2px solid #10b981;">
                     <div style="font-size: 0.72rem; color: #94a3b8; font-family: monospace;">STAGE 4</div>
-                    <div style="font-weight: 700; font-size: 0.85rem; color: #f8fafc;">Cross-Modal Pearson-r</div>
+                    <div class="stage-title" style="font-weight: 700; font-size: 0.85rem; color: #f8fafc;">Cross-Modal Pearson-r</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -846,7 +1075,7 @@ Inference Latency: {exec_latency}s
                     </div>
                     """, unsafe_allow_html=True)
 
-                st.markdown("<div style='font-size: 0.8rem; font-family: monospace; color: #94a3b8; margin: 10px 0 8px 0;'>SYNCHRONIZED PHONEME-TO-VISEME EXECUTION FILMSTRIP:</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-size: 0.8rem; font-family: monospace; color: #94a3b8; margin: 10px 0 4px 0;'>SYNCHRONIZED PHONEME-TO-VISEME EXECUTION FILMSTRIP:</div><div class='filmstrip-scroll-hint'>👉 Swipe horizontally to view all {len(lip_frames)} biometric frames</div>", unsafe_allow_html=True)
 
                 cols_lip = st.columns(min(8, len(lip_frames)))
                 for idx, lf in enumerate(lip_frames[:8]):
@@ -977,12 +1206,10 @@ if selected_page == "🏠 Dashboard & Mission":
 # ---------------------------------------------------------
 elif selected_page == "🎬 Multimodal Forensic Lab":
     st.markdown("""
-    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px;">
-        <div>
-            <h2 style="margin: 0; font-size: 2rem; color: #f8fafc;">🎬 Multimodal Forensic Lab</h2>
-            <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 0.95rem;">
-                Run live camera deepfake recognition, spatial CNN inference, physical acoustics, and audio-lip synchronization.
-            </p>
+    <div class="lab-header">
+        <div class="lab-header-text">
+            <h2>🎬 Multimodal Forensic Lab</h2>
+            <p>Run live camera deepfake recognition, spatial CNN inference, physical acoustics, and audio-lip synchronization.</p>
         </div>
         <div>
             <span class="badge badge-green"><span class="pulse-dot"></span> FORENSIC PIPELINE READY</span>
