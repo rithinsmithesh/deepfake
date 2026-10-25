@@ -12,6 +12,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+from live_camera import render_live_camera
 
 # Safe matplotlib cache directory
 os.environ["MPLCONFIGDIR"] = "/tmp/matplotlib"
@@ -366,9 +367,14 @@ elif selected_page == "🎬 Multimodal Forensic Lab":
         "🎬 Synthetic Demo 1 (Synchronized Speech)",
         "⚠️ Synthetic Demo 2 (Out-of-Phase / Desynced)",
         "🔇 Synthetic Demo 3 (Stripped Audio / Muted)",
-        "📤 Upload Custom File"
+        "📤 Upload Custom File",
+        "📷 Live Camera (Browser)"
     ]
     selected_preset = st.selectbox("Preset Selector", preset_options, label_visibility="collapsed")
+
+    if "Live Camera" in selected_preset:
+        render_live_camera(visual_detector)
+        st.stop()
 
     video_path = None
     video_title = ""
@@ -676,6 +682,3 @@ elif selected_page == "🎬 Multimodal Forensic Lab":
                     """, unsafe_allow_html=True)
                 else:
                     st.warning(f"⚠️ Synchronization Inactive: {sync_res.get('reason', 'Missing stream')}")
-
-
-
