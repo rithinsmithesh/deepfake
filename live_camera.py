@@ -115,8 +115,9 @@ def _capture_live_window(processor: LiveCameraProcessor, seconds: int) -> list[t
 def _analyze_camera_upload(visual_detector: Any, uploaded_file: Any) -> None:
     try:
         image = np.asarray(Image.open(io.BytesIO(uploaded_file.getvalue())).convert("RGB"))[:, :, ::-1]
+        st.session_state["deepshield_live_frames"] = [(0, image)]
         st.session_state["deepshield_live_result"] = _visual_live_result(
-            visual_detector, [(0, image)]
+            visual_detector, st.session_state["deepshield_live_frames"]
         )
     except Exception as exc:
         st.session_state["deepshield_live_result"] = {
@@ -242,28 +243,42 @@ def render_live_camera(visual_detector: Any, capture_mode: str = "video_call") -
     )
     duration = duration_options[duration_label]
 
-    if is_snapshot_mode:
-        capture = st.button(
-            "📸 CAPTURE INSTANT SNAPSHOT",
-            type="primary",
-            use_container_width=True,
-            disabled=not is_running,
-        )
-        if capture and processor is not None:
+    stored_frames = st.session_state.get("deepshield_live_frames", [])
+    control_start, control_stop, control_execute = st.columns(3)
+    start_recording = control_start.button(
+        "🔴 START RECORDING CALL",
+        type="primary",
+        use_container_width=True,
+        disabled=not is_running,
+    )
+    stop_camera = control_stop.button(
+        "⏹ STOP CAMERA",
+        use_container_width=True,
+        disabled=not is_running,
+    )
+    execute_analysis = control_execute.button(
+        "🚀 EXECUTE FORENSIC ANALYSIS",
+        use_container_width=True,
+    )
+
+    if stop_camera:
+        st.session_state["deepshield_live_camera_desired"] = False
+        st.rerun()
+
+    if start_recording and processor is not None:
+        with st.spinner(f"Capturing a {duration}-second forensic window..."):
+            st.session_state["deepshield_live_frames"] = _capture_live_window(processor, duration)
+        st.success("Recording captured. Click Execute Forensic Analysis to inspect it.")
+        st.rerun()
+
+    if execute_analysis:
+        frames_to_analyze = st.session_state.get("deepshield_live_frames", [])
+        if frames_to_analyze:
             st.session_state["deepshield_live_result"] = _visual_live_result(
-                visual_detector, processor.snapshot(count=8)
+                visual_detector, frames_to_analyze
             )
-    else:
-        capture = st.button(
-            "🔴 START RECORDING CALL",
-            type="primary",
-            use_container_width=True,
-            disabled=not is_running,
-        )
-        if capture and processor is not None:
-            st.session_state["deepshield_live_result"] = _visual_live_result(
-                visual_detector, _capture_live_window(processor, duration)
-            )
+        else:
+            st.warning("Capture a recording or take a camera snapshot before executing the analysis.")
 
     result = st.session_state.get("deepshield_live_result")
     if result:
